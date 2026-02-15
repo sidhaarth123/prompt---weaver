@@ -1,16 +1,32 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { Zap, Menu, X, Sparkles, LayoutTemplate, Image as ImageIcon, Video } from "lucide-react";
+import {
+  Zap,
+  Menu,
+  X,
+  Sparkles,
+  LayoutTemplate,
+  Image as ImageIcon,
+  Video,
+  CreditCard,
+  ChevronDown,
+  LogOut,
+  User,
+  AlertCircle
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/theme";
 
-const DEFAULTS = {
-  free: 10,
-  starter: 500,
-  pro: 2000,
-} as const;
+import { PLAN_CREDITS } from "@/config/pricing";
+
+// DEFAULTS removed
 
 function formatPlan(plan?: string | null) {
   const p = (plan || "free").toLowerCase();
@@ -169,28 +185,102 @@ export default function Navbar() {
 
           {user ? (
             <>
-              {/* Plan Badge */}
-              <Link to="/pricing">
-                <div
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all hover:scale-105 cursor-pointer",
-                    pillClass
-                  )}
-                >
-                  <Zap className="h-3 w-3" />
-                  <span>{planLabel}</span>
-                </div>
-              </Link>
+              {/* Unified Plan & Credits Badge */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className={cn(
+                    "group flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all hover:bg-muted/50 outline-none focus-visible:ring-2 focus-visible:ring-primary/20",
+                    // Dynamic Border Colors
+                    creditsBalance <= 0
+                      ? "border-destructive/30 bg-destructive/5 text-destructive hover:bg-destructive/10"
+                      : creditsBalance <= 3
+                        ? "border-orange-500/30 bg-orange-500/5 text-orange-400 hover:bg-orange-500/10"
+                        : "border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"
+                  )}>
+                    {/* Icon based on state */}
+                    {creditsBalance <= 0 ? (
+                      <AlertCircle className="h-3.5 w-3.5" />
+                    ) : (
+                      <Sparkles className={cn(
+                        "h-3.5 w-3.5 transition-colors",
+                        creditsBalance > 3 && "text-primary fill-primary/20"
+                      )} />
+                    )}
 
-              {/* Credits Display */}
-              {user && (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
-                  <Sparkles className="h-3 w-3 text-primary" />
-                  <span className="text-xs font-semibold text-muted-foreground">
-                    {loading ? "..." : creditsBalance} credits
-                  </span>
-                </div>
-              )}
+                    {/* Text Logic */}
+                    <span className="flex items-center gap-1.5">
+                      {loading ? (
+                        <span className="animate-pulse">Loading...</span>
+                      ) : (
+                        <>
+                          <span className={cn(
+                            "uppercase tracking-wider opacity-80",
+                            plan === "pro" ? "text-primary font-bold" : "font-medium"
+                          )}>{planLabel}</span>
+                          <span className="w-px h-3 bg-current opacity-20 mx-0.5" />
+                          <span>
+                            {creditsBalance === 0 ? "0 credits · Upgrade" : `${creditsBalance} credits`}
+                          </span>
+                        </>
+                      )}
+                    </span>
+
+                    <ChevronDown className="h-3 w-3 opacity-50 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-0 border-white/10 bg-black/90 backdrop-blur-xl" align="end">
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Current Plan</span>
+                      <span className={cn(
+                        "text-xs font-bold px-2 py-0.5 rounded-full border",
+                        plan === "pro"
+                          ? "border-primary/30 bg-primary/10 text-primary"
+                          : "border-white/10 bg-white/5 text-muted-foreground"
+                      )}>
+                        {planLabel}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-foreground font-medium">Credits</span>
+                        <span className={cn(
+                          "font-mono font-bold",
+                          creditsBalance <= 3 ? "text-orange-400" : "text-foreground"
+                        )}>
+                          {creditsBalance}
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all duration-500",
+                            creditsBalance <= 3 ? "bg-orange-500" : "bg-primary"
+                          )}
+                          style={{
+                            width: `${Math.min((creditsBalance / (PLAN_CREDITS[plan as keyof typeof PLAN_CREDITS] || 10)) * 100, 100)}%`
+                          }}
+                        />
+                      </div>
+                      {creditsBalance <= 3 && (
+                        <p className="text-[10px] text-orange-400/80 font-medium">
+                          {creditsBalance === 0 ? "Out of credits" : "Low on credits"}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-2 bg-white/5 border-t border-white/5 grid grid-cols-2 gap-2">
+                    <Link to="/pricing" className="col-span-2">
+                      <Button size="sm" variant="default" className="w-full h-8 text-xs bg-primary hover:bg-primary/90 text-white border-0">
+                        <Zap className="h-3 w-3 mr-1.5" />
+                        Upgrade Plan
+                      </Button>
+                    </Link>
+                  </div>
+                </PopoverContent>
+              </Popover>
 
               {/* Generator Links */}
               <Link
@@ -284,17 +374,41 @@ export default function Navbar() {
 
             {user ? (
               <>
-                {/* Plan & Credits */}
-                <div className="flex items-center gap-3 py-2 border-t border-white/10 pt-4">
-                  <div className={cn("inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold", pillClass)}>
-                    <Zap className="h-3 w-3" />
-                    {planLabel}
+                {/* Plan & Credits (Mobile) */}
+                <div className="flex items-center justify-between py-2 border-t border-white/10 pt-4">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Current Plan</span>
+                    <div className="flex items-center gap-2">
+                      <span className={cn(
+                        "text-xs font-bold px-2 py-0.5 rounded-full border",
+                        plan === "pro"
+                          ? "border-primary/30 bg-primary/10 text-primary"
+                          : "border-white/10 bg-white/5 text-muted-foreground"
+                      )}>
+                        {planLabel}
+                      </span>
+                      {plan === "free" && (
+                        <Link to="/pricing" className="text-[10px] text-primary hover:underline">
+                          Upgrade
+                        </Link>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
-                    <Sparkles className="h-3 w-3 text-primary" />
-                    <span className="text-xs font-semibold text-muted-foreground">
-                      {loading ? "..." : creditsBalance} credits
-                    </span>
+
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Credits</span>
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className={cn(
+                        "h-3 w-3",
+                        creditsBalance <= 3 ? "text-orange-400" : "text-primary"
+                      )} />
+                      <span className={cn(
+                        "text-sm font-mono font-bold",
+                        creditsBalance <= 3 ? "text-orange-400" : "text-foreground"
+                      )}>
+                        {creditsBalance}
+                      </span>
+                    </div>
                   </div>
                 </div>
 

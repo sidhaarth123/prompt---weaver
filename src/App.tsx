@@ -16,7 +16,7 @@ import HistoryPage from "./pages/History";
 import Library from "./pages/Library";
 import Presets from "./pages/Presets";
 import Settings from "./pages/Settings";
-import Pricing from "./pages/Pricing";
+import PricingPage from "@/components/pricing/PricingView";
 import Docs from "./pages/Docs";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
@@ -39,7 +39,7 @@ const App = () => (
             <Route path="/auth/callback" element={<AuthCallback />} />
 
             {/* Public pages */}
-            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/pricing" element={<PricingPage />} />
             <Route path="/docs" element={<Docs />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />

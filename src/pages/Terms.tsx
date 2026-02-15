@@ -25,7 +25,7 @@ export default function Terms() {
             </section>
             <section>
               <h2 className="text-xl font-semibold text-foreground">4. Usage Limits</h2>
-              <p>Free tier users are limited to 5 prompt generations per day. Pro subscribers have unlimited access. We reserve the right to enforce rate limits to ensure service quality.</p>
+              <p>Free tier users are limited to 10 prompt generations per month (subject to change). Pro subscribers have higher limits. We reserve the right to enforce rate limits to ensure service quality.</p>
             </section>
             <section>
               <h2 className="text-xl font-semibold text-foreground">5. Intellectual Property</h2>

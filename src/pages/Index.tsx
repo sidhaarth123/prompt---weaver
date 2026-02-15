@@ -14,6 +14,7 @@ import {
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { THEME, cn } from "@/lib/theme";
+import { PRICING_TIERS } from "@/config/pricing";
 
 const FEATURES = [
   {
@@ -234,29 +235,25 @@ export default function Index() {
             <p className={THEME.p}>Start for free, scale with your team.</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto items-start">
-            {[
-              { name: "Starter", price: "Free", features: ["100 Generations", "Basic Templates"] },
-              { name: "Pro", price: "$29", features: ["Unlimited Generations", "Advanced Templates", "Priority Support"], featured: true },
-              { name: "Team", price: "$99", features: ["SSO", "API Access", "Audit Logs"] }
-            ].map((plan, i) => (
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto items-start">
+            {PRICING_TIERS.map((plan, i) => (
               <div key={plan.name} className={cn(
                 THEME.glassCard,
-                "p-8 flex flex-col items-center text-center",
-                plan.featured ? "border-indigo-500/50 bg-indigo-500/[0.03]" : ""
+                "p-6 flex flex-col items-center text-center h-full",
+                plan.highlighted ? "border-indigo-500/50 bg-indigo-500/[0.03] scale-105 z-10 shadow-xl shadow-indigo-500/10" : "hover:bg-white/5"
               )}>
                 <h3 className="text-lg font-medium text-white/70 mb-2">{plan.name}</h3>
-                <div className="text-4xl font-bold text-white mb-6">{plan.price}<span className="text-sm font-normal text-white/40">/mo</span></div>
-                <ul className="space-y-4 mb-8 w-full">
-                  {plan.features.map(f => (
-                    <li key={f} className="text-sm text-white/60 flex items-center justify-center gap-2">
-                      <Zap className="w-4 h-4 text-indigo-400" /> {f}
+                <div className="text-3xl font-bold text-white mb-4">{plan.price}<span className="text-xs font-normal text-white/40">/mo</span></div>
+                <ul className="space-y-3 mb-6 w-full flex-1">
+                  {plan.features.slice(0, 3).map(f => (
+                    <li key={f} className="text-xs text-white/60 flex items-center justify-center gap-2">
+                      <Zap className="w-3 h-3 text-indigo-400" /> {f}
                     </li>
                   ))}
                 </ul>
                 <Link to="/pricing" className="w-full">
-                  <Button className={cn("w-full rounded-full", plan.featured ? "bg-indigo-600 hover:bg-indigo-700" : "bg-white/10 hover:bg-white/20")}>
-                    {plan.featured ? "Get Started" : "Choose Plan"}
+                  <Button size="sm" className={cn("w-full rounded-full h-9 text-xs", plan.highlighted ? "bg-indigo-600 hover:bg-indigo-700" : "bg-white/10 hover:bg-white/20")}>
+                    {plan.highlighted ? "Get Started" : "View Details"}
                   </Button>
                 </Link>
               </div>
