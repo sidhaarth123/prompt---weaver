@@ -3,44 +3,70 @@ import { Zap } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="border-t border-border/50 bg-background">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid gap-8 md:grid-cols-4">
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Zap className="h-5 w-5 text-primary" />
-              <span className="font-bold gradient-text">PromptForge AI</span>
+    <footer className="border-t border-white/5 bg-black/40 backdrop-blur-lg mt-auto">
+      <div className="container mx-auto px-6 py-16">
+        <div className="grid gap-12 md:grid-cols-4">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="bg-primary/20 p-1.5 rounded-lg">
+                <Zap className="h-5 w-5 text-primary" />
+              </div>
+              <span className="font-bold text-lg bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-200 to-indigo-400">PromptForge AI</span>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Turn your ideas into AI Studio–ready prompts in seconds.
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-[280px]">
+              Turn your ideas into AI Studio–ready prompts in seconds. Built for scale, designed for creators.
             </p>
           </div>
-          <div>
-            <h4 className="mb-3 text-sm font-semibold">Product</h4>
-            <div className="flex flex-col gap-2">
-              <Link to="/generator" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Generator</Link>
-              <Link to="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</Link>
-              <Link to="/docs" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Documentation</Link>
+
+          {[
+            {
+              title: "Product",
+              links: [
+                { label: "Generator", to: "/generator" },
+                { label: "Pricing", to: "/pricing" },
+                { label: "Documentation", to: "/docs" }
+              ]
+            },
+            {
+              title: "Account",
+              links: [
+                { label: "Prompt History", to: "/history" },
+                { label: "Saved Prompts", to: "/library" },
+                { label: "Presets", to: "/presets" }
+              ]
+            },
+            {
+              title: "Legal",
+              links: [
+                { label: "Privacy Policy", to: "/privacy" },
+                { label: "Terms of Service", to: "/terms" }
+              ]
+            }
+          ].map((column) => (
+            <div key={column.title}>
+              <h4 className="mb-6 text-sm font-semibold tracking-wider text-white uppercase opacity-80">{column.title}</h4>
+              <div className="flex flex-col gap-3">
+                {column.links.map((link) => (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    className="text-sm text-muted-foreground hover:text-white transition-colors hover:translate-x-1 duration-200"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
-          <div>
-            <h4 className="mb-3 text-sm font-semibold">Account</h4>
-            <div className="flex flex-col gap-2">
-              <Link to="/history" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Prompt History</Link>
-              <Link to="/library" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Saved Prompts</Link>
-              <Link to="/presets" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Presets</Link>
-            </div>
-          </div>
-          <div>
-            <h4 className="mb-3 text-sm font-semibold">Legal</h4>
-            <div className="flex flex-col gap-2">
-              <Link to="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</Link>
-              <Link to="/terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Terms of Service</Link>
-            </div>
-          </div>
+          ))}
         </div>
-        <div className="mt-8 border-t border-border/50 pt-8 text-center text-sm text-muted-foreground">
-          © {new Date().getFullYear()} PromptForge AI. All rights reserved.
+        <div className="mt-16 border-t border-white/5 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground/60">
+          <p>© {new Date().getFullYear()} PromptForge AI. All rights reserved.</p>
+          <div className="flex items-center gap-6">
+            {/* Socials placeholder */}
+            <span className="hover:text-white cursor-pointer transition-colors">Twitter</span>
+            <span className="hover:text-white cursor-pointer transition-colors">GitHub</span>
+            <span className="hover:text-white cursor-pointer transition-colors">Discord</span>
+          </div>
         </div>
       </div>
     </footer>

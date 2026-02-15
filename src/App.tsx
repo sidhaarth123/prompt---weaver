@@ -5,9 +5,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/lib/auth";
 import ProtectedRoute from "@/components/ProtectedRoute";
+
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
-import Generator from "./pages/Generator";
+import AuthCallback from "./pages/AuthCallback";
+import ImageGenerator from "./pages/ImageGenerator";
+import WebsiteGenerator from "./pages/WebsiteGenerator";
+import VideoGenerator from "./pages/VideoGenerator";
 import HistoryPage from "./pages/History";
 import Library from "./pages/Library";
 import Presets from "./pages/Presets";
@@ -29,16 +33,86 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+
+            {/* Auth */}
             <Route path="/auth" element={<Auth />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
+
+            {/* Public pages */}
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/docs" element={<Docs />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
-            <Route path="/generator" element={<ProtectedRoute><Generator /></ProtectedRoute>} />
-            <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
-            <Route path="/library" element={<ProtectedRoute><Library /></ProtectedRoute>} />
-            <Route path="/presets" element={<ProtectedRoute><Presets /></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+
+            {/* Protected pages */}
+            <Route
+              path="/image-generator"
+              element={
+                <ProtectedRoute>
+                  <ImageGenerator />
+                </ProtectedRoute>
+              }
+            />
+            {/* Redirect old generator route */}
+            <Route
+              path="/generator"
+              element={
+                <ProtectedRoute>
+                  <ImageGenerator />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/website-generator"
+              element={
+                <ProtectedRoute>
+                  <WebsiteGenerator />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/video-generator"
+              element={
+                <ProtectedRoute>
+                  <VideoGenerator />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/history"
+              element={
+                <ProtectedRoute>
+                  <HistoryPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/library"
+              element={
+                <ProtectedRoute>
+                  <Library />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/presets"
+              element={
+                <ProtectedRoute>
+                  <Presets />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
