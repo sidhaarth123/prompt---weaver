@@ -15,6 +15,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        display: ["Cal Sans", "Inter", "system-ui", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -61,10 +62,15 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
         neon: {
-          purple: "hsl(var(--neon-purple))",
-          blue: "hsl(var(--neon-blue))",
+          purple: "#A855F7",
+          blue: "#3B82F6",
+          pink: "#EC4899",
         },
-        surface: "hsl(var(--surface))",
+        glass: {
+          DEFAULT: "rgba(255, 255, 255, 0.05)",
+          hover: "rgba(255, 255, 255, 0.1)",
+          border: "rgba(255, 255, 255, 0.1)",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -84,13 +90,23 @@ export default {
           "0%, 100%": { opacity: "0.4" },
           "50%": { opacity: "0.8" },
         },
+        "float": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-10px)" },
+        },
+        "spotlight": {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(100%)" },
+        }
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "pulse-glow": "pulse-glow 3s ease-in-out infinite",
+        "float": "float 5s ease-in-out infinite",
+        "spotlight": "spotlight 2s ease-in-out infinite",
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
 } satisfies Config;

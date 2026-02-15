@@ -27,12 +27,9 @@ import {
     Trash2,
     Clapperboard,
     Music,
-    Mic,
     Film,
     Smartphone,
     Monitor,
-    Clock,
-    Type
 } from "lucide-react";
 
 // --- Constants ---
@@ -116,63 +113,6 @@ const TEMPLATES = [
         visuals: "Professional studio setup, depth of field, clear graphics"
     },
 ];
-
-// --- Mock Generation Logic ---
-
-const MOCK_TEMPLATE = (data: any) => `
-# Video Prompt: ${data.template || "Custom Concept"}
-
-**Platform:** ${data.platform} (${data.aspectRatio})
-**Style:** ${data.style}
-**Duration:** ${data.duration}s
-
-## Hook
-"${data.hook}"
-
-## Scene Beats
-${data.beats}
-
-## Visual Direction
-**Location/Mood:** ${data.visuals}
-**Characters/Props:** ${data.characters || "N/A"}
-**On-Screen Text:** ${data.textOverlay || "None"}
-
-## Audio
-**Voiceover:** ${data.voiceover ? `Yes - ${data.voiceTone}` : "No"}
-**Music/SFX:** ${data.music ? `Yes - ${data.musicVibe}` : "No"}
-
-## Constraints
-AVOID: ${data.negative || "None"}
-`;
-
-const MOCK_JSON = (data: any) => JSON.stringify({
-    metadata: {
-        platform: data.platform,
-        aspect_ratio: data.aspectRatio,
-        duration_seconds: data.duration,
-        style: data.style
-    },
-    script: {
-        hook: data.hook,
-        scenes: data.beats.split('\n').map((line: string) => line.replace('- ', '').trim()).filter(Boolean),
-        on_screen_text: data.textOverlay
-    },
-    visuals: {
-        setting: data.visuals,
-        characters: data.characters,
-        negative_prompt: data.negative
-    },
-    audio: {
-        voiceover: {
-            enabled: data.voiceover,
-            tone: data.voiceTone
-        },
-        music: {
-            enabled: data.music,
-            vibe: data.musicVibe
-        }
-    }
-}, null, 2);
 
 export default function VideoGenerator() {
     const [loading, setLoading] = useState(false);
@@ -332,7 +272,7 @@ export default function VideoGenerator() {
                             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-3">
                                 <div>
                                     <h1 className="text-4xl font-bold tracking-tight">
-                                        <span className={THEME.textGradient}>Video Prompt Generator</span>
+                                        <span className={THEME.gradientText}>Video Prompt Generator</span>
                                     </h1>
                                     <p className="text-muted-foreground text-lg max-w-2xl leading-relaxed mt-2">
                                         Storyboard scenes and generate prompts for AI video models like Sora, Pika, and Runway.
@@ -574,7 +514,7 @@ export default function VideoGenerator() {
                             <Button
                                 onClick={handleGenerate}
                                 disabled={loading}
-                                className={cn("flex-1 h-12 text-base font-semibold rounded-xl shadow-lg shadow-primary/20", THEME.primaryGradient, THEME.hoverScale)}
+                                className={cn("flex-1 h-12 text-base font-semibold rounded-xl shadow-lg shadow-primary/20 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 transition-all hover:scale-[1.02]")}
                             >
                                 {loading ? (
                                     <>

@@ -23,13 +23,10 @@ import {
     Check,
     RefreshCw,
     Trash2,
-    Instagram,
     Monitor,
     Smartphone,
     Aperture,
-    Sun,
     Type,
-    Palette
 } from "lucide-react";
 
 // --- Constants ---
@@ -45,7 +42,7 @@ const PLATFORMS = [
 ];
 
 const ASPECT_RATIOS = [
-    { label: "1:1", value: "1:1", icon: Instagram },
+    { label: "1:1", value: "1:1", icon: Smartphone }, // Generic icon if Instagram not imported
     { label: "4:5", value: "4:5", icon: Smartphone },
     { label: "16:9", value: "16:9", icon: Monitor },
     { label: "9:16", value: "9:16", icon: Smartphone },
@@ -89,43 +86,6 @@ const PLATFORM_ASPECT_MAP: Record<string, string> = {
     "Blog Header": "16:9",
     "Display Banner": "4:5"
 };
-
-// --- Mock Generation Logic ---
-
-const MOCK_TEMPLATE = (data: any) => `
-# Image Prompt for ${data.platform}
-
-**Subject:** ${data.subject}
-**Style:** ${data.style}
-**Lighting:** ${data.lighting}
-**View:** ${data.camera}
-
-## Detailed Description
-A highly detailed ${data.style} image of ${data.subject}. The scene is set with ${data.lighting} lighting to create a professional atmosphere. Shot from a ${data.camera} perspective.
-
-## Technical Specs
---ar ${data.aspectRatio.replace(":", "-")} --v 6.0 --style raw
-${data.negative ? `--no ${data.negative}` : ""}
-`;
-
-const MOCK_JSON = (data: any) => JSON.stringify({
-    prompt: {
-        subject: data.subject,
-        style: data.style,
-        lighting: data.lighting,
-        camera_angle: data.camera,
-        context: data.background
-    },
-    parameters: {
-        aspect_ratio: data.aspectRatio,
-        model: "midjourney-v6",
-        negative_prompt: data.negative
-    },
-    usage: {
-        platform: data.platform,
-        intent: "Marketing"
-    }
-}, null, 2);
 
 export default function ImageGenerator() {
     const [loading, setLoading] = useState(false);
@@ -250,7 +210,7 @@ export default function ImageGenerator() {
                                 </span>
                             </div>
                             <h1 className="text-4xl font-bold tracking-tight mb-3">
-                                <span className={THEME.textGradient}>Image Prompt Generator</span>
+                                <span className={THEME.gradientText}>Image Prompt Generator</span>
                             </h1>
                             <p className="text-muted-foreground text-lg max-w-2xl leading-relaxed">
                                 Craft professional image prompts for Midjourney, DALL-E 3, and Stable Diffusion.
@@ -430,7 +390,7 @@ export default function ImageGenerator() {
                             <Button
                                 onClick={handleGenerate}
                                 disabled={loading}
-                                className={cn("flex-1 h-12 text-base font-semibold rounded-xl shadow-lg shadow-primary/20", THEME.primaryGradient, THEME.hoverScale)}
+                                className={cn("flex-1 h-12 text-base font-semibold rounded-xl shadow-lg shadow-primary/20 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 transition-all hover:scale-[1.02]")}
                             >
                                 {loading ? (
                                     <>

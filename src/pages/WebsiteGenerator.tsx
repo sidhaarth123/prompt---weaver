@@ -10,7 +10,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { THEME, cn } from "@/lib/theme";
@@ -19,7 +18,6 @@ import {
     Sparkles,
     LayoutTemplate,
     Code2,
-    Palette,
     Target,
     Globe,
     Copy,
@@ -30,6 +28,7 @@ import {
     Monitor,
     Lightbulb
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 // --- Constants ---
 
@@ -79,42 +78,6 @@ const SECTIONS = [
     "Team / About",
     "Blog Feed",
 ];
-
-// --- Mock Generation Logic ---
-
-const MOCK_TEMPLATE = (data: any) => `
-# Website Prompt: ${data.brandName}
-
-**Type:** ${data.type}
-**Style:** ${data.style}
-**Tech Stack:** ${data.techStack}
-
-## Core Objective
-Primary goal is to optimize for **${data.goal}**. The design should target **${data.targetAudience}**.
-
-## Key Sections
-${data.sections.map((s: string) => `- ${s}`).join("\n")}
-
-## Design Guidelines
-Create a ${data.style} interface. Use modern spacing, premium typography, and ensure high responsiveness.
-`;
-
-const MOCK_JSON = (data: any) => JSON.stringify({
-    project: {
-        name: data.brandName,
-        type: data.type,
-        framework: data.techStack
-    },
-    design_system: {
-        style: data.style,
-        primary_goal: data.goal,
-        target_audience: data.targetAudience
-    },
-    structure: {
-        sections: data.sections,
-        navigation: ["Home", "Features", "Pricing", "Contact"]
-    }
-}, null, 2);
 
 export default function WebsiteGenerator() {
     const [loading, setLoading] = useState(false);
@@ -244,7 +207,7 @@ export default function WebsiteGenerator() {
                                 </span>
                             </div>
                             <h1 className="text-4xl font-bold tracking-tight mb-3">
-                                <span className={THEME.textGradient}>Website Prompt Generator</span>
+                                <span className={THEME.gradientText}>Website Prompt Generator</span>
                             </h1>
                             <p className="text-muted-foreground text-lg max-w-2xl leading-relaxed">
                                 Define your vision, and we'll architect the perfect prompt for AI website builders like Prompt Weaver, Bolt, and v0.
@@ -416,7 +379,7 @@ export default function WebsiteGenerator() {
                             <Button
                                 onClick={handleGenerate}
                                 disabled={loading}
-                                className={cn("flex-1 h-12 text-base font-semibold rounded-xl shadow-lg shadow-primary/20", THEME.primaryGradient, THEME.hoverScale)}
+                                className={cn("flex-1 h-12 text-base font-semibold rounded-xl shadow-lg shadow-primary/20 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 transition-all hover:scale-[1.02]")}
                             >
                                 {loading ? (
                                     <>

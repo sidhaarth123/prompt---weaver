@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { Zap, Eye, EyeOff, Mail, RefreshCw, KeyRound, ArrowLeft } from "lucide-react";
+import { Zap, Eye, EyeOff, Mail, RefreshCw, KeyRound, ArrowLeft, Check, Star } from "lucide-react";
 import { THEME, cn } from "@/lib/theme";
 import { motion } from "framer-motion";
 
@@ -224,16 +224,16 @@ export default function Auth() {
       <Button
         type="button"
         variant="outline"
-        className="w-full h-11 gap-3 bg-background/50 hover:bg-background border-white/10 hover:border-white/20 transition-all font-medium"
+        className="w-full h-11 gap-3 bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 transition-all font-medium text-white"
         onClick={handleGoogleLogin}
         disabled={oauthLoading || loading}
       >
-        <div className="flex items-center justify-center w-7 h-7 rounded-full bg-white shrink-0">
+        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-white shrink-0">
           <img
             src="/google-logo.svg"
             alt="Google"
-            width="18"
-            height="18"
+            width="14"
+            height="14"
             className="object-contain"
           />
         </div>
@@ -250,282 +250,196 @@ export default function Auth() {
 
 
   return (
-    <div className="min-h-screen bg-background relative flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
-      {/* Background Ambience */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(263_70%_58%/0.15),transparent_70%)] pointer-events-none" />
-      <Link to="/" className="absolute top-8 left-8 text-muted-foreground hover:text-foreground transition-colors hidden sm:flex items-center gap-2 text-sm font-medium z-10">
-        <ArrowLeft className="w-4 h-4" /> Back to Home
-      </Link>
+    <div className="min-h-screen bg-background flex">
+      {/* LEFT PANEL - BRANDING (Hidden on Mobile) */}
+      <div className="hidden lg:flex flex-col justify-between w-1/2 bg-black border-r border-white/5 relative overflow-hidden p-12">
+        {/* Ambient Glow */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/20 blur-[150px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="sm:mx-auto sm:w-full sm:max-w-md relative z-10"
-      >
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center justify-center rounded-xl bg-primary/10 p-3 mb-4 ring-1 ring-primary/20 shadow-lg shadow-primary/10">
-            <Zap className="h-8 w-8 text-primary" />
+        <div className="relative z-10">
+          <Link to="/" className="inline-flex items-center gap-2 mb-12 group">
+            <div className="p-2 rounded-lg bg-indigo-500/20 group-hover:bg-indigo-500/30 transition-colors">
+              <Zap className="h-6 w-6 text-indigo-400 group-hover:text-indigo-300" />
+            </div>
+            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">Prompt Weaver</span>
           </Link>
-          <h2 className="text-3xl font-bold tracking-tight">
-            <span className={THEME.textGradient}>Welcome back</span>
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Sign in to your account to continue weaving prompts
+
+          <h1 className="text-4xl font-bold text-white mb-6 leading-tight">
+            Turn Ideas into <br />
+            <span className="text-indigo-400">Production-Ready Assets</span>
+          </h1>
+          <p className="text-lg text-white/50 max-w-md leading-relaxed">
+            Join thousands of world-class creators and teams building the future with Prompt Weaver.
           </p>
         </div>
 
-        <div className={cn(THEME.glassCard, "px-6 py-8 sm:px-10")}>
+        {/* Testimonial / Social Proof */}
+        <div className="relative z-10 space-y-8">
+          <div className="p-6 rounded-2xl border border-white/5 bg-white/5 backdrop-blur-md">
+            <div className="flex gap-1 text-amber-400 mb-4">
+              {[1, 2, 3, 4, 5].map(i => <Star key={i} className="w-4 h-4 fill-current" />)}
+            </div>
+            <p className="text-white/80 italic mb-4">"The structured JSON output has completely transformed our AI workflow. It's not just a prompt generator, it's an engineering tool."</p>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center font-bold text-white text-sm">
+                JD
+              </div>
+              <div>
+                <div className="font-semibold text-white text-sm">John Doe</div>
+                <div className="text-xs text-white/40">Lead AI Engineer @ TechCorp</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 text-xs text-white/30 font-medium tracking-widest uppercase">
+            <span>Trusted By</span>
+            <div className="h-px flex-1 bg-white/10" />
+            <span>Netflix</span>
+            <span>Spotify</span>
+            <span>Linear</span>
+          </div>
+        </div>
+      </div>
+
+
+      {/* RIGHT PANEL - FORM */}
+      <div className="flex-1 flex flex-col justify-center items-center p-4 sm:p-8 relative">
+        <Link to="/" className="absolute top-8 right-8 text-sm text-muted-foreground hover:text-white transition-colors lg:hidden">
+          Back to Home
+        </Link>
+
+        <div className="w-full max-w-md space-y-8">
+          <div className="text-center lg:text-left">
+            <h2 className="text-2xl font-bold text-white mb-2">
+              {activeTab === "login" ? "Welcome back" : "Create an account"}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {activeTab === "login" ? "Enter your details to access your workspace." : "Start your 14-day free trial today."}
+            </p>
+          </div>
+
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 h-11 bg-background/50 p-1 mb-6 border border-white/5 rounded-lg">
-              <TabsTrigger value="login" className="rounded-md data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-all duration-300">
-                Log In
-              </TabsTrigger>
-              <TabsTrigger value="signup" className="rounded-md data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-all duration-300">
-                Sign Up
-              </TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 h-12 bg-black border border-white/10 rounded-lg p-1 mb-8">
+              <TabsTrigger value="login" className="rounded-md data-[state=active]:bg-white/10 data-[state=active]:text-white transition-all font-medium">Log In</TabsTrigger>
+              <TabsTrigger value="signup" className="rounded-md data-[state=active]:bg-white/10 data-[state=active]:text-white transition-all font-medium">Sign Up</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="login" className="mt-0 focus-visible:outline-none animate-in fade-in slide-in-from-left-2 duration-300">
-              <OAuthBlock />
-
-              <form onSubmit={handleLogin} className="space-y-5">
-                <div className="space-y-2">
-                  <Label htmlFor="login-email" className="text-xs font-medium uppercase tracking-wider text-muted-foreground ml-1">Email</Label>
-                  <Input
-                    id="login-email"
-                    type="email"
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                    required
-                    placeholder="name@example.com"
-                    autoComplete="email"
-                    className="bg-background/50 border-white/10 focus:border-primary/50 h-11"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="login-password" className="text-xs font-medium uppercase tracking-wider text-muted-foreground ml-1">Password</Label>
-                    <button
-                      type="button"
-                      onClick={handleForgotPassword}
-                      className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
-                    >
-                      Forgot?
-                    </button>
-                  </div>
-
-                  <div className="relative">
-                    <Input
-                      id="login-password"
-                      type={showLoginPassword ? "text" : "password"}
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      required
-                      placeholder="••••••••"
-                      autoComplete="current-password"
-                      className="bg-background/50 border-white/10 focus:border-primary/50 h-11 pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowLoginPassword((s) => !s)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                      aria-label={showLoginPassword ? "Hide password" : "Show password"}
-                    >
-                      {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <Button
-                  type="submit"
-                  className={cn("w-full h-11 font-semibold text-base shadow-lg shadow-primary/20", THEME.primaryGradient, THEME.hoverScale)}
-                  disabled={loading || oauthLoading}
-                >
-                  {loading ? (
-                    <div className="flex items-center gap-2">
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Signing in...
-                    </div>
-                  ) : "Sign In"}
-                </Button>
-
-                {/* Optional: quick reset input */}
-                <div className="pt-4 border-t border-white/5">
-                  <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mb-3">
-                    <KeyRound className="h-3.5 w-3.5" />
-                    <span>Quick password reset</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      value={forgotEmail}
-                      onChange={(e) => setForgotEmail(e.target.value)}
-                      placeholder="Enter email to reset"
-                      className="h-9 text-xs bg-background/30 border-white/10"
-                    />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="h-9 px-4 text-xs font-medium border border-white/10 bg-white/5 hover:bg-white/10"
-                      onClick={handleForgotPassword}
-                      disabled={loading || oauthLoading}
-                    >
-                      Send Link
-                    </Button>
-                  </div>
-                </div>
-              </form>
-            </TabsContent>
-
-            <TabsContent value="signup" className="mt-0 focus-visible:outline-none animate-in fade-in slide-in-from-right-2 duration-300">
-              <OAuthBlock />
-
-              {/* Post-signup screen */}
-              {signupSubmittedEmail ? (
-                <div className="space-y-6 text-center animate-in zoom-in-95 duration-300">
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 ring-1 ring-primary/20">
-                    <Mail className="h-8 w-8 text-primary" />
-                  </div>
+            <div className="relative min-h-[400px]">
+              <TabsContent value="login" className="absolute inset-0 mt-0 data-[state=inactive]:hidden animate-in fade-in slide-in-from-left-4 duration-300">
+                <OAuthBlock />
+                <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <h3 className="text-xl font-semibold">Check your email</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      We sent a confirmation link to <br />
-                      <span className="font-medium text-foreground">{signupSubmittedEmail}</span>
-                    </p>
-                  </div>
-
-                  <div className="space-y-3 pt-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full gap-2 border-white/10 bg-white/5 hover:bg-white/10"
-                      onClick={handleResend}
-                      disabled={resendLoading}
-                    >
-                      <RefreshCw className={`h-4 w-4 ${resendLoading ? "animate-spin" : ""}`} />
-                      {resendLoading ? "Resending..." : "Resend Email"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="w-full text-xs"
-                      onClick={() => {
-                        setSignupSubmittedEmail(null);
-                        setSignupEmail("");
-                        setSignupPassword("");
-                        setSignupConfirm("");
-                      }}
-                    >
-                      Use different email
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <form onSubmit={handleSignup} className="space-y-5">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email" className="text-xs font-medium uppercase tracking-wider text-muted-foreground ml-1">Email</Label>
+                    <Label htmlFor="login-email">Email</Label>
                     <Input
-                      id="signup-email"
+                      id="login-email"
                       type="email"
-                      value={signupEmail}
-                      onChange={(e) => setSignupEmail(e.target.value)}
                       required
-                      placeholder="name@example.com"
-                      autoComplete="email"
-                      className="bg-background/50 border-white/10 focus:border-primary/50 h-11"
+                      value={loginEmail}
+                      onChange={e => setLoginEmail(e.target.value)}
+                      className="bg-black/40 border-white/10 focus:border-indigo-500 h-11"
+                      placeholder="name@work-email.com"
                     />
                   </div>
-
                   <div className="space-y-2">
-                    <Label htmlFor="signup-password" className="text-xs font-medium uppercase tracking-wider text-muted-foreground ml-1">Password</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="login-password">Password</Label>
+                      <button type="button" onClick={handleForgotPassword} className="text-xs text-indigo-400 hover:text-indigo-300">Forgot password?</button>
+                    </div>
                     <div className="relative">
                       <Input
-                        id="signup-password"
-                        type={showSignupPassword ? "text" : "password"}
-                        value={signupPassword}
-                        onChange={(e) => setSignupPassword(e.target.value)}
+                        id="login-password"
+                        type={showLoginPassword ? "text" : "password"}
                         required
-                        placeholder="At least 8 characters"
-                        autoComplete="new-password"
-                        className="bg-background/50 border-white/10 focus:border-primary/50 h-11 pr-10"
+                        value={loginPassword}
+                        onChange={e => setLoginPassword(e.target.value)}
+                        className="bg-black/40 border-white/10 focus:border-indigo-500 h-11 pr-10"
+                        placeholder="Enter your password"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowSignupPassword((s) => !s)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                        aria-label={showSignupPassword ? "Hide password" : "Show password"}
-                      >
-                        {showSignupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white">
+                        {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-confirm" className="text-xs font-medium uppercase tracking-wider text-muted-foreground ml-1">Confirm Password</Label>
-                    <div className="relative">
-                      <Input
-                        id="signup-confirm"
-                        type={showSignupConfirm ? "text" : "password"}
-                        value={signupConfirm}
-                        onChange={(e) => setSignupConfirm(e.target.value)}
-                        required
-                        placeholder="Re-enter password"
-                        autoComplete="new-password"
-                        className="bg-background/50 border-white/10 focus:border-primary/50 h-11 pr-10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowSignupConfirm((s) => !s)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                        aria-label={showSignupConfirm ? "Hide password" : "Show password"}
-                      >
-                        {showSignupConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-
-                    {signupConfirm.length > 0 && signupPassword !== signupConfirm && (
-                      <p className="text-xs text-destructive animate-in slide-in-from-top-1">Passwords do not match.</p>
-                    )}
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className={cn("w-full h-11 font-semibold text-base shadow-lg shadow-primary/20", THEME.primaryGradient, THEME.hoverScale)}
-                    disabled={loading || oauthLoading || !isSignupValid}
-                  >
-                    {loading ? (
-                      <div className="flex items-center gap-2">
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                        Creating Account...
-                      </div>
-                    ) : "Create Account"}
+                  <Button type="submit" className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg" disabled={loading || oauthLoading}>
+                    {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Sign In"}
                   </Button>
-
-                  <p className="text-center text-xs text-muted-foreground pt-2">
-                    By joining, you agree to our{" "}
-                    <Link to="/terms" className="underline underline-offset-4 hover:text-foreground transition-colors">
-                      Terms
-                    </Link>{" "}
-                    and{" "}
-                    <Link to="/privacy" className="underline underline-offset-4 hover:text-foreground transition-colors">
-                      Privacy Policy
-                    </Link>
-                    .
-                  </p>
                 </form>
-              )}
-            </TabsContent>
+              </TabsContent>
+
+              <TabsContent value="signup" className="absolute inset-0 mt-0 data-[state=inactive]:hidden animate-in fade-in slide-in-from-right-4 duration-300">
+                <OAuthBlock />
+                {signupSubmittedEmail ? (
+                  <div className="text-center space-y-4 py-8">
+                    <div className="w-16 h-16 rounded-full bg-indigo-500/20 flex items-center justify-center mx-auto text-indigo-400">
+                      <Mail className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-xl font-bold text-white">Check your email</h3>
+                    <p className="text-muted-foreground">We sent a verification link to <span className="text-white">{signupSubmittedEmail}</span></p>
+                    <Button onClick={handleResend} disabled={resendLoading} variant="outline" className="w-full border-white/10 hover:bg-white/5">
+                      {resendLoading ? "Sending..." : "Resend Email"}
+                    </Button>
+                    <Button onClick={() => setSignupSubmittedEmail(null)} variant="ghost" className="text-sm">Use different email</Button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSignup} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-email">Email</Label>
+                      <Input
+                        id="signup-email"
+                        type="email"
+                        required
+                        value={signupEmail}
+                        onChange={e => setSignupEmail(e.target.value)}
+                        className="bg-black/40 border-white/10 focus:border-indigo-500 h-11"
+                        placeholder="name@work-email.com"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-password">Password</Label>
+                        <Input
+                          id="signup-password"
+                          type="password"
+                          required
+                          value={signupPassword}
+                          onChange={e => setSignupPassword(e.target.value)}
+                          className="bg-black/40 border-white/10 focus:border-indigo-500 h-11"
+                          placeholder="8+ chars"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-confirm">Confirm</Label>
+                        <Input
+                          id="signup-confirm"
+                          type="password"
+                          required
+                          value={signupConfirm}
+                          onChange={e => setSignupConfirm(e.target.value)}
+                          className="bg-black/40 border-white/10 focus:border-indigo-500 h-11"
+                          placeholder="Repeat"
+                        />
+                      </div>
+                    </div>
+                    {signupPassword && signupConfirm && signupPassword !== signupConfirm && (
+                      <p className="text-xs text-red-400">Passwords do not match</p>
+                    )}
+                    <Button type="submit" className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg" disabled={loading || oauthLoading || !isSignupValid}>
+                      {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Create Account"}
+                    </Button>
+                    <div className="text-xs text-center text-muted-foreground">
+                      By joining, you agree to our <Link to="/terms" className="underline hover:text-white">Terms</Link> and <Link to="/privacy" className="underline hover:text-white">Privacy Policy</Link>.
+                    </div>
+                  </form>
+                )}
+              </TabsContent>
+            </div>
           </Tabs>
         </div>
 
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          Need help? Visit our{" "}
-          <Link to="/docs" className="underline underline-offset-4 hover:text-foreground transition-colors font-medium">
-            Docs & Support
-          </Link>
-        </p>
-      </motion.div>
+        <div className="absolute bottom-6 left-0 right-0 text-center">
+          <p className="text-xs text-white/20">© 2024 Prompt Weaver Inc.</p>
+        </div>
+      </div>
     </div>
   );
 }

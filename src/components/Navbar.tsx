@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Zap, Menu, X, Sparkles, LayoutTemplate, Image as ImageIcon, Video } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { THEME, cn } from "@/lib/theme";
+import { cn } from "@/lib/theme";
 
 const DEFAULTS = {
   free: 10,
@@ -241,7 +241,7 @@ export default function Navbar() {
                 </Button>
               </Link>
               <Link to="/auth?tab=signup">
-                <Button className={cn(THEME.buttonPrimary, THEME.primaryGradient)}>
+                <Button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 border-0 text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.02]">
                   Get Started
                 </Button>
               </Link>
@@ -348,7 +348,7 @@ export default function Navbar() {
                   </Button>
                 </Link>
                 <Link to="/auth?tab=signup" onClick={() => setMobileOpen(false)}>
-                  <Button className={cn("w-full", THEME.primaryGradient)}>
+                  <Button className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 border-0 text-white shadow-lg shadow-primary/20">
                     Get Started
                   </Button>
                 </Link>
