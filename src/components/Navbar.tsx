@@ -170,12 +170,21 @@ export default function Navbar() {
 
         {/* Desktop Navigation */}
         <div className="hidden lg:flex items-center gap-8">
-          <Link
-            to="/pricing"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Pricing
-          </Link>
+          {user ? (
+            <Link
+              to="/pricing"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Pricing
+            </Link>
+          ) : (
+            <Link
+              to="/plans"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Pricing
+            </Link>
+          )}
           <Link
             to="/docs"
             className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
@@ -357,13 +366,23 @@ export default function Navbar() {
       {mobileOpen && (
         <div className="lg:hidden border-t border-white/10 bg-black/95 backdrop-blur-xl">
           <div className="container mx-auto px-6 py-6 flex flex-col gap-4">
-            <Link
-              to="/pricing"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
-              onClick={() => setMobileOpen(false)}
-            >
-              Pricing
-            </Link>
+            {user ? (
+              <Link
+                to="/pricing"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
+                onClick={() => setMobileOpen(false)}
+              >
+                Pricing
+              </Link>
+            ) : (
+              <Link
+                to="/plans"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
+                onClick={() => setMobileOpen(false)}
+              >
+                Pricing
+              </Link>
+            )}
             <Link
               to="/docs"
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"

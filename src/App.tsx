@@ -17,6 +17,7 @@ import Library from "./pages/Library";
 import Presets from "./pages/Presets";
 import Settings from "./pages/Settings";
 import PricingPage from "@/components/pricing/PricingView";
+import PublicPricing from "./pages/PublicPricing";
 import Docs from "./pages/Docs";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
@@ -40,6 +41,7 @@ const App = () => (
 
             {/* Public pages */}
             <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/plans" element={<PublicPricing />} />
             <Route path="/docs" element={<Docs />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
