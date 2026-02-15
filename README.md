@@ -1,22 +1,22 @@
-# Welcome to your Lovable project
+# Welcome to Prompt Weaver
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+**URL**: https://promptweaver.dev/projects/REPLACE_WITH_PROJECT_ID
 
-## 🚀 NEW: Server-Side Gemini Generation
+## 🚀 NEW: Server-Side OpenAI Generation
 
-This project now includes production-grade server-side AI generation using Google Gemini! 
+This project now includes production-grade server-side AI generation using OpenAI!
 
 ### Quick Setup
 
 1. **Get API Keys:**
-   - Gemini API Key: https://aistudio.google.com/app/apikey
+   - OpenAI API Key: https://platform.openai.com/api-keys
    - Supabase Service Key: Your Supabase Dashboard → Settings → API
 
 2. **Update .env:**
    ```bash
-   GEMINI_API_KEY="your_actual_key_here"
+   OPENAI_API_KEY="your_actual_key_here"
    SUPABASE_SERVICE_ROLE_KEY="your_service_key_here"
    ```
 
@@ -36,7 +36,7 @@ This project now includes production-grade server-side AI generation using Googl
 
 ### Features
 
-- ✅ Server-side Gemini API integration
+- ✅ Server-side OpenAI API integration
 - ✅ Strict request/response validation with Zod
 - ✅ Automatic JSON repair for malformed outputs
 - ✅ Preserves field values exactly (e.g., aspectRatio)
@@ -49,15 +49,15 @@ This project now includes production-grade server-side AI generation using Googl
 
 There are several ways of editing your application.
 
-**Use Lovable**
+**Use Prompt Weaver**
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+Simply visit the [Prompt Weaver Project](https://promptweaver.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
 
-Changes made via Lovable will be committed automatically to this repo.
+Changes made via Prompt Weaver will be committed automatically to this repo.
 
 **Use your preferred IDE**
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Prompt Weaver.
 
 The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
@@ -100,26 +100,25 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
-- **Google Gemini API** (for AI generation)
+- **OpenAI API** (for AI generation)
 - **Supabase** (for authentication & database)
 - **Zod** (for schema validation)
 
 ## How can I deploy this project?
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+Simply open [Prompt Weaver](https://promptweaver.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
 
 **Important for Production:**
 Before deploying, make sure to add these environment variables to your hosting platform:
-- `GEMINI_API_KEY`
+- `OPENAI_API_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `NEXT_PUBLIC_SUPABASE_URL`
-- `GEMINI_MODEL` (optional, defaults to gemini-2.0-flash-exp)
-- `GENERATION_TIMEOUT_MS` (optional, defaults to 40000)
+- `OPENAI_MODEL` (optional, defaults to gpt-4o-mini)
 
-## Can I connect a custom domain to my Lovable project?
+## Can I connect a custom domain to my Prompt Weaver project?
 
 Yes, you can!
 
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Read more here: [Setting up a custom domain](https://docs.promptweaver.dev/features/custom-domain#custom-domain)

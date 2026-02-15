@@ -59,7 +59,7 @@ const GOALS = [
 ];
 
 const TECH_STACKS = [
-    "Lovable (React + shadcn)",
+    "Prompt Weaver (React + shadcn)",
     "Bolt.new",
     "Cursor (AI Editor)",
     "v0 (Vercel)",
@@ -247,7 +247,7 @@ export default function WebsiteGenerator() {
                                 <span className={THEME.textGradient}>Website Prompt Generator</span>
                             </h1>
                             <p className="text-muted-foreground text-lg max-w-2xl leading-relaxed">
-                                Define your vision, and we'll architect the perfect prompt for AI website builders like Lovable, Bolt, and v0.
+                                Define your vision, and we'll architect the perfect prompt for AI website builders like Prompt Weaver, Bolt, and v0.
                             </p>
                         </div>
 
