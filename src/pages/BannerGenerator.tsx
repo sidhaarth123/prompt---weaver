@@ -35,7 +35,8 @@ import {
     Send,
     Zap,
     MessageSquare,
-    ShoppingBag
+    ShoppingBag,
+    ArrowUp
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -309,10 +310,6 @@ ${cfg.avoidMisleading ? "- Authentic product representation" : ""}
         // 1. Parse Input (Simple Heuristics)
         const lower = userInput.toLowerCase();
 
-        // Brand & Product
-        // Naive extraction: assume first few words might be product/brand if not already set? 
-        // Or just map known keywords.
-
         let overrides: any = {};
 
         // Category Detection
@@ -379,7 +376,7 @@ ${cfg.avoidMisleading ? "- Authentic product representation" : ""}
         setIsThinking(false);
         setChatHistory(prev => [...prev, {
             role: "assistant",
-            content: "I've analyzed your request and auto-filled the banner configuration. The prompt is ready below!"
+            content: "I've analyzed your requirements and configured the optimal banner settings. The prompt is ready for generation below."
         }]);
     };
 
@@ -540,113 +537,141 @@ ${cfg.avoidMisleading ? "- Authentic product representation" : ""}
 
                     {/* RIGHT PANEL: ASSISTANT */}
                     <div className="flex flex-col h-full space-y-6 animate-in fade-in slide-in-from-right-4 duration-700 min-h-[85vh]">
-                        {/* 1) Assistant Header & Input */}
-                        <div className="flex flex-col space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-                                        Banner Performance Assistant <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                                    </h1>
-                                    <p className="text-muted-foreground text-sm font-medium">
-                                        E-commerce Conversion Architect
-                                    </p>
+                        {/* CHAT INTERFACE CARD - UNIFIED, PREMIUM */}
+                        <div className="flex flex-col flex-1 min-h-[600px] rounded-[24px] border border-white/[0.08] bg-[#0F0F16]/60 backdrop-blur-[40px] shadow-2xl overflow-hidden relative group ring-1 ring-white/5 hover:ring-white/10 transition-all">
+
+                            {/* 1. Header (Floating / Fixed Top) */}
+                            <div className="px-6 py-4 flex items-center justify-between border-b border-white/[0.06] bg-white/[0.02] backdrop-blur-md">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                                        <Bot className="w-5 h-5 text-white" />
+                                    </div>
+                                    <div>
+                                        <h1 className="text-lg font-bold text-white leading-none">Banner Assistant</h1>
+                                        <p className="text-xs text-muted-foreground mt-1 font-medium">E-commerce Conversion Architect</p>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-1 text-xs text-green-400 bg-green-500/10 px-2 py-1 rounded-full border border-green-500/20">
-                                    <Bot className="w-3.5 h-3.5" />
-                                    <span>Online</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="flex h-2.5 w-2.5 relative">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                                    </span>
+                                    <span className="text-xs font-medium text-green-400/80">Online</span>
                                 </div>
                             </div>
 
-                            {/* Input Area */}
-                            <div className={cn(THEME.glassCard, "p-1 rounded-[16px] shadow-lg border-primary/20 bg-background/50 backdrop-blur-md focus-within:ring-2 focus-within:ring-primary/30 transition-all")}>
-                                <div className="relative">
-                                    <Textarea
-                                        placeholder="Describe your banner... e.g. Luxury skincare launch banner, 20% OFF, Instagram Story 9:16, neon premium style."
-                                        value={assistantInput}
-                                        onChange={e => setAssistantInput(e.target.value)}
-                                        className="w-full min-h-[100px] bg-transparent border-0 resize-none text-base p-4 focus-visible:ring-0 placeholder:text-muted-foreground/50"
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter" && !e.shiftKey) {
-                                                e.preventDefault();
-                                                handleAssistantSubmit();
-                                            }
-                                        }}
-                                    />
-                                    <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                            {/* 2. Messages Area (Flex Grow, Scrollable) */}
+                            <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-gradient-to-b from-transparent to-black/20">
+                                {chatHistory.length === 0 ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-center space-y-6 opacity-60">
+                                        <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border border-white/10 animate-pulse">
+                                            <Sparkles className="w-8 h-8 text-primary/40" />
+                                        </div>
+                                        <div className="space-y-2 max-w-sm">
+                                            <h3 className="text-lg font-medium text-white">How can I help you today?</h3>
+                                            <p className="text-sm text-muted-foreground">
+                                                I can design high-converting banners for your Shopify store, Instagram ads, or email campaigns.
+                                            </p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6">
+                                        {chatHistory.map((msg, i) => (
+                                            <motion.div
+                                                key={i}
+                                                initial={{ opacity: 0, y: 20 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ duration: 0.3 }}
+                                                className={cn(
+                                                    "flex w-full",
+                                                    msg.role === "user" ? "justify-end" : "justify-start"
+                                                )}
+                                            >
+                                                <div
+                                                    className={cn(
+                                                        "max-w-[80%] rounded-[20px] p-5 text-sm leading-relaxed shadow-lg",
+                                                        msg.role === "user"
+                                                            ? "bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] text-white rounded-tr-md"
+                                                            : "bg-white/[0.07] border border-white/[0.08] text-slate-200 rounded-tl-md backdrop-blur-sm"
+                                                    )}
+                                                >
+                                                    {msg.content}
+                                                </div>
+                                            </motion.div>
+                                        ))}
+
+                                        {isThinking && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                className="flex justify-start w-full"
+                                            >
+                                                <div className="bg-white/[0.04] border border-white/[0.05] text-white px-6 py-4 rounded-[20px] rounded-tl-md backdrop-blur-sm flex items-center gap-3 shadow-lg">
+                                                    <span className="text-xs font-medium text-muted-foreground">Thinking</span>
+                                                    <div className="flex gap-1.5 pt-1">
+                                                        <span className="w-2 h-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 animate-[bounce_1s_infinite_0ms]" />
+                                                        <span className="w-2 h-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 animate-[bounce_1s_infinite_200ms]" />
+                                                        <span className="w-2 h-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 animate-[bounce_1s_infinite_400ms]" />
+                                                    </div>
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </div>
+                                )}
+                                <div ref={chatEndRef} className="h-4" />
+                            </div>
+
+                            {/* 3. Sticky Input Area (Bottom) */}
+                            <div className="p-5 border-t border-white/[0.08] bg-black/20 backdrop-blur-xl z-10">
+                                {/* Suggestion Chips */}
+                                <div className="flex overflow-x-auto gap-2 pb-4 scrollbar-none mask-fade-right">
+                                    {ASSISTANT_SUGGESTIONS.map((chip, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => setAssistantInput(chip)}
+                                            className="whitespace-nowrap px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-muted-foreground hover:bg-white/10 hover:text-white hover:border-primary/40 transition-all flex-shrink-0"
+                                        >
+                                            {chip}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Input Field */}
+                                <div className="relative group/input">
+                                    <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-[18px] opacity-0 group-focus-within/input:opacity-20 transition duration-500 blur-md transition-all"></div>
+                                    <div className="relative flex items-end gap-2 bg-[#1A1A24] border border-white/10 rounded-[16px] p-2 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-inner">
+                                        <Textarea
+                                            placeholder="Describe your banner... e.g. Luxury skincare launch banner, 20% OFF"
+                                            value={assistantInput}
+                                            onChange={e => setAssistantInput(e.target.value)}
+                                            className="w-full min-h-[56px] max-h-[120px] bg-transparent border-0 resize-none text-base p-3 focus-visible:ring-0 placeholder:text-muted-foreground/40 text-white leading-relaxed"
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter" && !e.shiftKey) {
+                                                    e.preventDefault();
+                                                    handleAssistantSubmit();
+                                                }
+                                            }}
+                                        />
                                         <Button
-                                            size="sm"
+                                            size="icon"
                                             onClick={handleAssistantSubmit}
                                             disabled={loading || isThinking || !assistantInput.trim()}
-                                            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg hover:shadow-primary/25 transition-all"
+                                            className={cn(
+                                                "mb-1 h-10 w-10 rounded-xl transition-all duration-300 shadow-lg",
+                                                assistantInput.trim()
+                                                    ? "bg-gradient-to-br from-indigo-500 to-purple-600 hover:scale-105 hover:shadow-purple-500/25 text-white"
+                                                    : "bg-white/5 text-muted-foreground hover:bg-white/10"
+                                            )}
                                         >
-                                            <Sparkles className="w-3.5 h-3.5 mr-2" />
-                                            Auto-Fill & Generate
+                                            <ArrowUp className="w-5 h-5" />
                                         </Button>
                                     </div>
                                 </div>
-                            </div>
-
-                            {/* Chips */}
-                            <div className="flex flex-wrap gap-2">
-                                {ASSISTANT_SUGGESTIONS.map((chip, idx) => (
-                                    <button
-                                        key={idx}
-                                        onClick={() => setAssistantInput(chip)}
-                                        className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-muted-foreground hover:bg-primary/10 hover:border-primary/30 hover:text-primary transition-all flex items-center gap-1.5"
-                                    >
-                                        <Zap className="w-3 h-3" />
-                                        {chip}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* 2) Conversation Area */}
-                        <div className="flex-1 min-h-[450px] relative rounded-[16px] border border-white/[0.08] bg-white/[0.03] overflow-hidden flex flex-col shadow-inner">
-                            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/20 pointer-events-none" />
-
-                            <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
-                                {chatHistory.length === 0 ? (
-                                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground/50 space-y-3">
-                                        <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center">
-                                            <MessageSquare className="w-6 h-6" />
-                                        </div>
-                                        <p className="text-sm">Assistant ready.</p>
-                                        <p className="text-xs">Describe your banner above to start.</p>
-                                    </div>
-                                ) : (
-                                    chatHistory.map((msg, i) => (
-                                        <motion.div
-                                            key={i}
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            className={cn(
-                                                "max-w-[85%] rounded-[18px] p-4 text-sm leading-relaxed shadow-md backdrop-blur-sm",
-                                                msg.role === "user"
-                                                    ? "ml-auto bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-tr-sm"
-                                                    : "mr-auto bg-white/10 border border-white/5 text-slate-200 rounded-tl-sm shadow-[0_0_15px_rgba(0,0,0,0.2)]"
-                                            )}
-                                        >
-                                            {msg.content}
-                                        </motion.div>
-                                    ))
-                                )}
-
-                                {isThinking && (
-                                    <motion.div
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        className="mr-auto bg-white/5 border border-white/5 px-4 py-3 rounded-[18px] rounded-tl-sm flex items-center gap-2 w-fit"
-                                    >
-                                        <span className="text-xs text-muted-foreground font-medium">Designing banner</span>
-                                        <div className="flex gap-1">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-[bounce_1s_infinite_0ms]" />
-                                            <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-[bounce_1s_infinite_200ms]" />
-                                            <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-[bounce_1s_infinite_400ms]" />
-                                        </div>
-                                    </motion.div>
-                                )}
-                                <div ref={chatEndRef} />
+                                <div className="text-center mt-3">
+                                    <p className="text-[10px] text-muted-foreground/60 font-medium tracking-wide">
+                                        AI can make mistakes. Review generated prompts before using.
+                                    </p>
+                                </div>
                             </div>
                         </div>
 
@@ -663,7 +688,7 @@ ${cfg.avoidMisleading ? "- Authentic product representation" : ""}
                                 )}
                             </div>
 
-                            <div className={cn(THEME.glassCard, "overflow-hidden border-primary/10 shadow-lg min-h-[300px] flex flex-col")}>
+                            <div className={cn(THEME.glassCard, "overflow-hidden border-primary/10 shadow-lg min-h-[250px] flex flex-col")}>
                                 <Tabs defaultValue="text" className="w-full h-full flex flex-col">
                                     <div className="border-b border-white/5 bg-background/20 px-4">
                                         <TabsList className="bg-transparent border-b-0 p-0 h-10 w-full justify-start gap-4">
@@ -682,7 +707,7 @@ ${cfg.avoidMisleading ? "- Authentic product representation" : ""}
                                         </TabsList>
                                     </div>
 
-                                    <div className="relative flex-1 bg-black/40 min-h-[300px]">
+                                    <div className="relative flex-1 bg-black/40 min-h-[250px]">
                                         <TabsContent value="text" className="m-0 h-full">
                                             <Textarea
                                                 value={result?.text || ""}
