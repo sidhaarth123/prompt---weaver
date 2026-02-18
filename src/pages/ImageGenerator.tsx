@@ -877,10 +877,10 @@ export default function ImageGenerator() {
 
                     {/* RIGHT: AI ASSISTANT PANEL */}
                     {/* RIGHT: AI ASSISTANT PANEL */}
-                    <div className="lg:sticky lg:top-24 h-[calc(100vh-120px)] min-h-[600px] flex flex-col animate-in fade-in slide-in-from-right-4 duration-700 delay-100">
+                    <div className="flex flex-col space-y-4 animate-in fade-in slide-in-from-right-4 duration-700 delay-100">
 
-                        {/* 1. ASSISTANT HEADER & INPUT */}
-                        <div className={cn(THEME.glassCard, "p-5 space-y-4 border-primary/20 shadow-2xl relative overflow-hidden group mb-4")}>
+                        {/* 1. HEADER (Title + Chips) */}
+                        <div className={cn(THEME.glassCard, "p-5 space-y-4 border-primary/20 relative overflow-hidden group")}>
                             {/* Glow Effect */}
                             <div className="absolute top-0 right-0 p-20 bg-primary/10 blur-[80px] rounded-full pointer-events-none group-hover:bg-primary/20 transition-all duration-1000" />
 
@@ -888,7 +888,7 @@ export default function ImageGenerator() {
                                 <div>
                                     <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70 flex items-center gap-2">
                                         <Sparkles className="w-5 h-5 text-purple-400 fill-purple-400/20" />
-                                        Prompt Weaver Assistant
+                                        Prompt Weaver Assistant <span className="text-[10px] text-muted-foreground/50 font-mono">v3</span>
                                     </h2>
                                     <p className="text-xs text-purple-300/80 font-medium mt-1">
                                         Auto-fill fields and generate premium e-commerce prompts
@@ -912,47 +912,46 @@ export default function ImageGenerator() {
                                     </button>
                                 ))}
                             </div>
+                        </div>
 
-                            {/* INPUT AREA */}
-                            <div className="relative z-10 group/input">
-                                <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-xl opacity-20 group-hover/input:opacity-40 transition duration-500 blur-sm" />
-                                <div className="relative bg-[#0F0F12] rounded-xl p-1">
-                                    <Textarea
-                                        placeholder="Describe your product image... e.g. Luxury skincare serum for Instagram Story 9:16"
-                                        value={assistantInput}
-                                        onChange={(e) => setAssistantInput(e.target.value)}
-                                        className="min-h-[80px] w-full resize-none border-0 bg-transparent p-3 text-sm focus-visible:ring-0 placeholder:text-muted-foreground/50"
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter' && !e.shiftKey) {
-                                                e.preventDefault();
-                                                handleAssistantSubmit();
-                                            }
-                                        }}
-                                        autoFocus
-                                    />
-                                    <div className="flex justify-between items-center px-2 pb-2">
-                                        <span className="text-[10px] text-muted-foreground/60 pl-2">Press Enter to generate</span>
-                                        <Button
-                                            size="sm"
-                                            onClick={handleAssistantSubmit}
-                                            disabled={loading || !assistantInput.trim()}
-                                            className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-500/20 border-0 h-8 px-4 rounded-lg font-medium text-xs transition-all hover:scale-105 active:scale-95"
-                                        >
-                                            {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}
-                                            Auto-Fill & Generate
-                                        </Button>
-                                    </div>
+                        {/* 2. STICKY INPUT */}
+                        <div className="sticky top-24 z-30 group/input">
+                            <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-xl opacity-20 group-hover/input:opacity-40 transition duration-500 blur-sm" />
+                            <div className="relative bg-[#0F0F12] rounded-xl p-1 shadow-2xl border border-white/10">
+                                <Textarea
+                                    placeholder="Describe your product image... e.g. Luxury skincare serum for Instagram Story 9:16"
+                                    value={assistantInput}
+                                    onChange={(e) => setAssistantInput(e.target.value)}
+                                    className="min-h-[80px] w-full resize-none border-0 bg-transparent p-3 text-sm focus-visible:ring-0 placeholder:text-muted-foreground/50"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleAssistantSubmit();
+                                        }
+                                    }}
+                                />
+                                <div className="flex justify-between items-center px-2 pb-2">
+                                    <span className="text-[10px] text-muted-foreground/60 pl-2">Press Enter to generate</span>
+                                    <Button
+                                        size="sm"
+                                        onClick={handleAssistantSubmit}
+                                        disabled={loading || !assistantInput.trim()}
+                                        className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-500/20 border-0 h-8 px-4 rounded-lg font-medium text-xs transition-all hover:scale-105 active:scale-95"
+                                    >
+                                        {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}
+                                        Auto-Fill & Generate
+                                    </Button>
                                 </div>
                             </div>
                         </div>
 
-                        {/* 2. CHAT HISTORY (Middle) */}
-                        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 p-5 mb-4 rounded-2xl bg-white/[0.03] border border-white/10 shadow-[inset_0_0_20px_rgba(140,90,255,0.05)] flex flex-col">
+                        {/* 3. CHAT MESSAGES (Scrollable) */}
+                        <div className="min-h-[320px] max-h-[500px] overflow-y-auto custom-scrollbar space-y-4 p-5 rounded-2xl bg-white/[0.03] border border-white/10 shadow-[inset_0_0_22px_rgba(140,90,255,0.10)] flex flex-col">
                             {chatHistory.length === 0 && !result && (
-                                <div className="flex-1 flex flex-col items-center justify-center text-center p-8 opacity-70">
-                                    <Sparkles className="w-14 h-14 mb-5 text-primary/60 animate-pulse" />
-                                    <p className="text-base font-semibold mb-1">Assistant Ready</p>
-                                    <p className="text-sm text-muted-foreground">Type a product request above to start generating.</p>
+                                <div className="flex-1 flex flex-col items-center justify-center text-center p-8 opacity-70 mt-12">
+                                    <Sparkles className="w-10 h-10 mb-4 text-primary/60 animate-pulse" />
+                                    <p className="text-[15px] font-medium mb-1">Assistant ready.</p>
+                                    <p className="text-sm text-muted-foreground">Type a request above to start.</p>
                                 </div>
                             )}
                             {chatHistory.map((msg, idx) => (
@@ -981,8 +980,8 @@ export default function ImageGenerator() {
                         {/* DIVIDER */}
                         <div className="border-t border-white/10 pb-4" />
 
-                        {/* 3. OUTPUT RESULT (Bottom) */}
-                        <div className="shrink-0 min-h-[300px] max-h-[45%] flex flex-col">
+                        {/* 4. OUTPUT RESULT (Bottom) */}
+                        <div className="h-auto min-h-[300px] mt-4 flex flex-col">
                             {result ? (
                                 <motion.div
                                     key="result"
@@ -994,7 +993,7 @@ export default function ImageGenerator() {
                                     {/* Soft Glow Border */}
                                     <div className="absolute inset-0 border border-primary/20 rounded-xl pointer-events-none z-20" />
 
-                                    <Tabs defaultValue="text" className="w-full flex-1 flex flex-col">
+                                    <Tabs defaultValue="text" className="w-full h-auto flex flex-col">
                                         <div className="border-b border-white/5 bg-background/40 px-3 py-2 backdrop-blur-sm flex justify-between items-center">
                                             <TabsList className="bg-transparent border-0 p-0 h-auto gap-2">
                                                 <TabsTrigger value="text" className="data-[state=active]:bg-primary/20 h-7 text-[10px] px-3 rounded-full">PROMPT</TabsTrigger>
@@ -1007,17 +1006,14 @@ export default function ImageGenerator() {
                                             </div>
                                         </div>
 
-                                        <div className="relative flex-1 bg-[#09090b]">
+                                        <div className="relative h-auto min-h-[300px] bg-[#09090b]">
                                             <TabsContent value="text" className="m-0 h-full">
-                                                <Textarea
-                                                    value={result.text}
-                                                    readOnly
-                                                    className="h-full w-full resize-none border-0 bg-transparent p-4 font-mono text-xs leading-relaxed text-slate-300 focus-visible:ring-0"
-                                                    style={{ fontFamily: '"Geist Mono", monospace' }}
-                                                />
+                                                <div className="h-full w-full p-4 font-mono text-xs leading-relaxed text-slate-300 whitespace-pre-wrap break-words border-0 bg-transparent" style={{ fontFamily: '"Geist Mono", monospace' }}>
+                                                    {result.text}
+                                                </div>
                                             </TabsContent>
                                             <TabsContent value="json" className="m-0 h-full">
-                                                <pre className="h-full w-full overflow-auto p-4 text-[10px] font-mono text-emerald-400 leading-relaxed custom-scrollbar">
+                                                <pre className="h-full w-full overflow-auto p-4 text-[10px] font-mono text-emerald-400 leading-relaxed custom-scrollbar whitespace-pre-wrap break-all">
                                                     {result.json}
                                                 </pre>
                                             </TabsContent>
@@ -1026,7 +1022,7 @@ export default function ImageGenerator() {
                                 </motion.div>
                             ) : (
                                 // Placeholder for visual balance
-                                <div className="h-full rounded-xl border border-dashed border-white/10 bg-white/[0.02] flex items-center justify-center">
+                                <div className="h-32 rounded-xl border border-dashed border-white/10 bg-white/[0.02] flex items-center justify-center">
                                     <span className="text-xs text-muted-foreground/30">Output will appear here</span>
                                 </div>
                             )}

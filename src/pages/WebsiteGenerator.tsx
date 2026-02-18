@@ -852,10 +852,10 @@ export default function WebsiteGenerator() {
                     </div>
 
                     {/* RIGHT: WEBSITE BLUEPRINT ASSISTANT PANEL */}
-                    <div className="lg:sticky lg:top-24 h-[calc(100vh-120px)] min-h-[600px] flex flex-col space-y-4 animate-in fade-in slide-in-from-right-4 duration-700 delay-100">
+                    <div className="flex flex-col space-y-6 animate-in fade-in slide-in-from-right-4 duration-700 delay-100">
 
                         {/* CHAT INTERFACE CARD */}
-                        <div className="flex flex-col flex-1 min-h-[550px] rounded-[24px] border border-white/[0.08] bg-[#0F0F16]/65 backdrop-blur-[30px] shadow-[0_0_30px_rgba(0,0,0,0.2)] overflow-hidden relative group ring-1 ring-white/5 hover:ring-white/10 transition-all">
+                        <div className="flex flex-col h-[600px] rounded-[24px] border border-white/[0.08] bg-[#0F0F16]/65 backdrop-blur-[30px] shadow-[0_0_30px_rgba(0,0,0,0.2)] overflow-hidden relative group ring-1 ring-white/5 hover:ring-white/10 transition-all">
 
                             {/* 1. Header (Floating / Fixed Top) */}
                             <div className="px-6 py-4 flex items-center justify-between border-b border-white/[0.06] bg-white/[0.02] backdrop-blur-md">
@@ -988,49 +988,51 @@ export default function WebsiteGenerator() {
                         </div>
 
                         {/* 4. Output Result (Below Chat) */}
-                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
-                            <div className="flex items-center justify-between mb-2 px-1">
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200 mt-6">
+                            <div className="flex items-center justify-between mb-4 px-1">
                                 <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                                     <Code2 className="w-4 h-4" /> Generated Blueprint
                                 </h2>
                                 {result && (
-                                    <Button variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground hover:text-white" onClick={() => copyToClipboard(result.text, false)}>
-                                        <Copy className="w-3 h-3 mr-1.5" /> Copy Prompt
-                                    </Button>
+                                    <div className="flex gap-2">
+                                        <Button variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground hover:text-white" onClick={() => copyToClipboard(result.text, false)}>
+                                            <Copy className="w-3 h-3 mr-1.5" /> Copy Text
+                                        </Button>
+                                        <Button variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground hover:text-white" onClick={() => copyToClipboard(result.json, true)}>
+                                            <Code2 className="w-3 h-3 mr-1.5" /> Copy JSON
+                                        </Button>
+                                    </div>
                                 )}
                             </div>
 
-                            <div className={cn(THEME.glassCard, "overflow-hidden border-primary/10 shadow-lg min-h-[250px] flex flex-col")}>
-                                <Tabs defaultValue="text" className="w-full h-full flex flex-col">
-                                    <div className="border-b border-white/5 bg-background/20 px-4">
-                                        <TabsList className="bg-transparent border-b-0 p-0 h-10 w-full justify-start gap-4">
+                            <div className="bg-white/[0.04] border border-white/[0.08] rounded-2xl p-5 shadow-lg min-h-[250px] flex flex-col">
+                                <Tabs defaultValue="text" className="w-full flex-1 flex flex-col">
+                                    <div className="border-b border-white/5 pb-4 mb-4">
+                                        <TabsList className="bg-transparent border-b-0 p-0 h-auto justify-start gap-6">
                                             <TabsTrigger
                                                 value="text"
-                                                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 py-2 text-xs uppercase tracking-wide"
+                                                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 py-1 text-xs uppercase tracking-wide font-medium"
                                             >
-                                                Prompt
+                                                Prompt / Blueprint
                                             </TabsTrigger>
                                             <TabsTrigger
                                                 value="json"
-                                                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 py-2 text-xs uppercase tracking-wide"
+                                                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 py-1 text-xs uppercase tracking-wide font-medium"
                                             >
                                                 JSON Spec
                                             </TabsTrigger>
                                         </TabsList>
                                     </div>
 
-                                    <div className="relative flex-1 bg-black/40 min-h-[250px]">
-                                        <TabsContent value="text" className="m-0 h-full">
-                                            <Textarea
-                                                value={result?.text || ""}
-                                                readOnly
-                                                placeholder="Your generated website blueprint prompt will appear here..."
-                                                className="h-full w-full resize-none border-0 bg-transparent p-6 font-mono text-sm leading-relaxed text-slate-300 focus-visible:ring-0"
-                                            />
+                                    <div className="relative flex-1">
+                                        <TabsContent value="text" className="m-0 h-auto outline-none focus:outline-none">
+                                            <div className="w-full font-mono text-sm leading-relaxed text-slate-300 whitespace-pre-wrap break-words">
+                                                {result?.text || <span className="text-muted-foreground/30 italic">Generated website blueprint will appear here...</span>}
+                                            </div>
                                         </TabsContent>
-                                        <TabsContent value="json" className="m-0 h-full">
-                                            <pre className="h-full w-full overflow-auto p-6 text-xs font-mono text-emerald-400 leading-relaxed custom-scrollbar bg-transparent">
-                                                {result?.json || ""}
+                                        <TabsContent value="json" className="m-0 h-auto outline-none focus:outline-none">
+                                            <pre className="w-full font-mono text-xs text-emerald-400 leading-relaxed whitespace-pre-wrap break-all">
+                                                {result?.json || <span className="text-muted-foreground/30 italic">JSON spec will appear here...</span>}
                                             </pre>
                                         </TabsContent>
                                     </div>
