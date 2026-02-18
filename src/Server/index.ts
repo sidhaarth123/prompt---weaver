@@ -1,8 +1,9 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
-import dotenv from "dotenv";
+import * as dotenv from "dotenv";
 import { z } from "zod";
-import { rateLimit } from "express-rate-limit";
+// @ts-ignore
+import rateLimit from "express-rate-limit";
 import { v4 as uuidv4 } from "uuid";
 import OpenAI from "openai";
 import { GenerateRequestSchema, GenerateRequest } from "../lib/schemas/generateRequest.js";
@@ -14,7 +15,7 @@ const app = express();
 const PORT = 8787;
 
 // Valid models: gpt-4o-mini, gpt-4o, etc.
-const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 if (!OPENAI_API_KEY) {
@@ -32,7 +33,7 @@ app.use(express.json({ limit: "200kb" }));
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  limit: 10, // Limit each IP to 10 requests per minute
+  max: 10, // Limit each IP to 10 requests per minute
   standardHeaders: 'draft-8',
   legacyHeaders: false,
 });
@@ -54,7 +55,7 @@ CRITICAL RULES:
   "jsonPrompt": {
     "prompt": "string (the detailed generation prompt)",
     "negativePrompt": "string (optional, things to avoid)",
-    "model": "gpt-4o-mini",
+    "model": "gpt-4o",
     "aspectRatio": "1:1" | "4:5" | "16:9" | "9:16" | "1.91:1" (ONLY if user specified),
     "stylePreset": "string (ONLY if user specified)",
     "quality": "string (ONLY if user specified)",
@@ -104,7 +105,7 @@ function buildPromptFromRequest(data: GenerateRequest): string {
   return prompt;
 }
 
-app.post("/api/generate", async (req: Request, res: Response) => {
+app.post("/api/prompt-assistant", async (req: Request, res: Response) => {
   const requestId = uuidv4();
   console.log(`[server] Request ${requestId} received`);
 

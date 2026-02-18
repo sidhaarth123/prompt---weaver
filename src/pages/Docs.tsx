@@ -44,7 +44,7 @@ export default function Docs() {
               <ol className="list-decimal list-inside space-y-3 text-muted-foreground leading-relaxed">
                 <li>Open <strong>Google AI Studio</strong> (aistudio.google.com)</li>
                 <li>Select <strong>Create new prompt</strong></li>
-                <li>Choose your model (Gemini, Imagen, etc.)</li>
+                <li>Choose your model (Imagen, etc.)</li>
                 <li>Paste the <code className="rounded bg-secondary px-1.5 py-0.5 text-sm">prompt</code> field as your main instruction</li>
                 <li>Configure aspect ratio and other settings to match the JSON values</li>
                 <li>Click <strong>Generate</strong></li>

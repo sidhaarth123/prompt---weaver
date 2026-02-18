@@ -17,7 +17,7 @@ export default function Privacy() {
             </section>
             <section>
               <h2 className="text-xl font-semibold text-foreground">2. How We Use Your Information</h2>
-              <p>Your information is used to provide and improve the PromptForge AI service, manage your account and subscription, enforce usage limits, and communicate important service updates.</p>
+              <p>Your information is used to provide and improve the Prompt Weaver service, manage your account and subscription, enforce usage limits, and communicate important service updates.</p>
             </section>
             <section>
               <h2 className="text-xl font-semibold text-foreground">3. Data Storage & Security</h2>
@@ -33,7 +33,7 @@ export default function Privacy() {
             </section>
             <section>
               <h2 className="text-xl font-semibold text-foreground">6. Contact</h2>
-              <p>For privacy-related inquiries, please contact us at privacy@promptforge.ai.</p>
+              <p>For privacy-related inquiries, please contact us at privacy@promptweaver.com.</p>
             </section>
           </div>
         </div>

@@ -11,10 +11,10 @@ export default function Footer() {
               <div className="bg-primary/20 p-1.5 rounded-lg">
                 <Zap className="h-5 w-5 text-primary" />
               </div>
-              <span className="font-bold text-lg bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-200 to-indigo-400">PromptForge AI</span>
+              <span className="font-bold text-lg bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-200 to-indigo-400">Prompt Weaver</span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-[280px]">
-              Turn your ideas into AI Studio–ready prompts in seconds. Built for scale, designed for creators.
+              Turn your ideas into production-ready prompts in seconds. Built for scale, designed for creators.
             </p>
           </div>
 
@@ -22,7 +22,7 @@ export default function Footer() {
             {
               title: "Product",
               links: [
-                { label: "Generator", to: "/generator" },
+                { label: "Generator", to: "/image-generator" },
                 { label: "Pricing", to: "/pricing" },
                 { label: "Documentation", to: "/docs" }
               ]
@@ -39,7 +39,9 @@ export default function Footer() {
               title: "Legal",
               links: [
                 { label: "Privacy Policy", to: "/privacy" },
-                { label: "Terms of Service", to: "/terms" }
+                { label: "Terms of Service", to: "/terms" },
+                { label: "Refund Policy", to: "/refund-policy" },
+                { label: "Contact Support", to: "/contact" }
               ]
             }
           ].map((column) => (
@@ -60,7 +62,7 @@ export default function Footer() {
           ))}
         </div>
         <div className="mt-16 border-t border-white/5 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground/60">
-          <p>© {new Date().getFullYear()} PromptForge AI. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Prompt Weaver. All rights reserved.</p>
           <div className="flex items-center gap-6">
             {/* Socials placeholder */}
             <span className="hover:text-white cursor-pointer transition-colors">Twitter</span>

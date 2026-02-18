@@ -13,11 +13,11 @@ export default function Terms() {
           <div className="mt-8 space-y-8 text-muted-foreground leading-relaxed">
             <section>
               <h2 className="text-xl font-semibold text-foreground">1. Acceptance of Terms</h2>
-              <p>By accessing or using PromptForge AI, you agree to be bound by these Terms of Service. If you do not agree, do not use the service.</p>
+              <p>By accessing or using Prompt Weaver, you agree to be bound by these Terms of Service. If you do not agree, do not use the service.</p>
             </section>
             <section>
               <h2 className="text-xl font-semibold text-foreground">2. Service Description</h2>
-              <p>PromptForge AI is an AI-powered prompt generator that creates structured JSON prompts for Google AI Studio. We do not generate images or videos — we generate prompts that you use in third-party tools.</p>
+              <p>Prompt Weaver is an AI-powered prompt generator that creates structured JSON prompts for Google AI Studio. We do not generate images or videos — we generate prompts that you use in third-party tools.</p>
             </section>
             <section>
               <h2 className="text-xl font-semibold text-foreground">3. User Accounts</h2>
@@ -29,15 +29,15 @@ export default function Terms() {
             </section>
             <section>
               <h2 className="text-xl font-semibold text-foreground">5. Intellectual Property</h2>
-              <p>You retain ownership of the prompts you generate. PromptForge AI retains rights to the underlying technology, algorithms, and user interface.</p>
+              <p>You retain ownership of the prompts you generate. Prompt Weaver retains rights to the underlying technology, algorithms, and user interface.</p>
             </section>
             <section>
               <h2 className="text-xl font-semibold text-foreground">6. Limitation of Liability</h2>
-              <p>PromptForge AI is provided "as is" without warranties. We are not liable for any damages arising from your use of the service or the prompts generated.</p>
+              <p>Prompt Weaver is provided "as is" without warranties. We are not liable for any damages arising from your use of the service or the prompts generated.</p>
             </section>
             <section>
               <h2 className="text-xl font-semibold text-foreground">7. Contact</h2>
-              <p>For questions about these terms, contact us at legal@promptforge.ai.</p>
+              <p>For questions about these terms, contact us at legal@promptweaver.com.</p>
             </section>
           </div>
         </div>

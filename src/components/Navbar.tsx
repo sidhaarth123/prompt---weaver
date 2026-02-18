@@ -1,3 +1,4 @@
+// @ts-check
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -178,12 +179,20 @@ export default function Navbar() {
               Pricing
             </Link>
           ) : (
-            <Link
-              to="/plans"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Pricing
-            </Link>
+            <>
+              <Link
+                to="/about"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                About
+              </Link>
+              <Link
+                to="/plans"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Pricing
+              </Link>
+            </>
           )}
           <Link
             to="/docs"
@@ -307,6 +316,13 @@ export default function Navbar() {
                 Video
               </Link>
               <Link
+                to="/banner-generator"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+              >
+                <CreditCard className="h-4 w-4" />
+                Banner
+              </Link>
+              <Link
                 to="/website-generator"
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
               >
@@ -320,6 +336,12 @@ export default function Navbar() {
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 Library
+              </Link>
+              <Link
+                to="/app/about"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                About
               </Link>
 
               {/* Sign Out */}
@@ -375,13 +397,22 @@ export default function Navbar() {
                 Pricing
               </Link>
             ) : (
-              <Link
-                to="/plans"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
-                onClick={() => setMobileOpen(false)}
-              >
-                Pricing
-              </Link>
+              <>
+                <Link
+                  to="/about"
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  About
+                </Link>
+                <Link
+                  to="/plans"
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Pricing
+                </Link>
+              </>
             )}
             <Link
               to="/docs"
@@ -448,6 +479,14 @@ export default function Navbar() {
                   Video Generator
                 </Link>
                 <Link
+                  to="/banner-generator"
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2 flex items-center gap-2"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <CreditCard className="h-4 w-4" />
+                  Banner Generator
+                </Link>
+                <Link
                   to="/website-generator"
                   className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2 flex items-center gap-2"
                   onClick={() => setMobileOpen(false)}
@@ -461,6 +500,13 @@ export default function Navbar() {
                   onClick={() => setMobileOpen(false)}
                 >
                   Library
+                </Link>
+                <Link
+                  to="/app/about"
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  About
                 </Link>
                 <Button
                   variant="ghost"

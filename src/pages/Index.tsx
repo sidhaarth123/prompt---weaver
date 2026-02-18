@@ -1,4 +1,6 @@
-import { Link } from "react-router-dom";
+import { useAuth } from "@/lib/auth";
+import { useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import {
@@ -6,10 +8,6 @@ import {
   Code2,
   GitBranch,
   Sparkles,
-  ChevronRight,
-  MonitorPlay,
-  Share2,
-  Lock,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -62,6 +60,16 @@ const STEPS = [
 ];
 
 export default function Index() {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Redirect authenticated users to the main app (Image Generator)
+    if (!loading && user) {
+      navigate("/image-generator", { replace: true });
+    }
+  }, [user, loading, navigate]);
+
   return (
     <div className="min-h-screen bg-background font-sans selection:bg-primary/20 overflow-x-hidden">
       <Navbar />
@@ -277,7 +285,7 @@ export default function Index() {
             </div>
             <div className="space-y-2">
               <h4 className="font-semibold text-white">What models are supported?</h4>
-              <p className="text-sm text-white/50 leading-relaxed">We optimize for GPT-4, Claude 3, Gemini Pro, and Midjourney v6.</p>
+              <p className="text-sm text-white/50 leading-relaxed">We optimize for GPT-4, Claude 3, and Midjourney v6.</p>
             </div>
             <div className="space-y-2">
               <h4 className="font-semibold text-white">Do you have an API?</h4>

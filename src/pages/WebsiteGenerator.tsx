@@ -19,42 +19,39 @@ import {
     LayoutTemplate,
     Code2,
     Target,
-    Globe,
     Copy,
     Check,
     RefreshCw,
     Trash2,
     Layers,
     Monitor,
-    Lightbulb
+    Lightbulb,
+    ShoppingBag,
+    TrendingUp
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import WebsiteAssistantWidget from "@/components/WebsiteAssistantWidget";
 
 // --- Constants ---
 
-const WEBSITE_TYPES = [
-    "SaaS Platform",
-    "E-commerce Store",
-    "Portfolio / Personal",
-    "Agency / Corporate",
-    "Landing Page",
-    "Blog / Content",
+const BUSINESS_MODELS = [
+    "Single Product Brand",
+    "Multi-Product Store",
+    "Dropshipping",
+    "Print on Demand",
+    "Subscription Based",
+    "Digital Product"
 ];
 
-const STYLES = [
-    "Premium & minimal",
-    "Bold & brutalist",
-    "Futuristic & dark",
-    "Playful & colorful",
-    "Corporate & clean",
-];
+const PRICE_RANGES = ["Budget", "Mid-Range", "Premium", "Luxury"];
 
-const GOALS = [
-    "Generate Leads",
-    "Direct Sales",
-    "User Signups",
-    "Brand Awareness",
-    "Information / Edu",
+const BRAND_PERSONALITIES = [
+    "Minimal & Clean",
+    "Bold & Energetic",
+    "Luxury & Premium",
+    "Playful",
+    "Corporate",
+    "Futuristic"
 ];
 
 const TECH_STACKS = [
@@ -66,17 +63,112 @@ const TECH_STACKS = [
     "React + Vite",
 ];
 
+const ECOM_PLATFORMS = [
+    "Shopify",
+    "WooCommerce",
+    "Custom (Next.js)",
+    "Webflow",
+    "Framer",
+    "Headless Commerce"
+];
+
+const PAYMENT_GATEWAYS = [
+    "Stripe",
+    "Razorpay",
+    "PayPal",
+    "Apple Pay",
+    "Google Pay",
+    "COD"
+];
+
+const CONVERSION_GOALS = [
+    "Direct Purchase",
+    "Add to Cart",
+    "Email Capture",
+    "Pre-Launch Waitlist",
+    "Upsell Funnel",
+    "Bundle Sales"
+];
+
+const TRAFFIC_SOURCES = [
+    "Meta Ads",
+    "TikTok Ads",
+    "Google Ads",
+    "Organic SEO",
+    "Influencer Marketing",
+    "Mixed Traffic"
+];
+
+const FUNNEL_TYPES = [
+    "Single Page Funnel",
+    "Multi-Step Funnel",
+    "Traditional Store",
+    "High-Converting Landing Page",
+    "Sales Letter Style"
+];
+
 const SECTIONS = [
     "Hero Section",
+    "Product Showcase Grid",
+    "Featured Product Section",
     "Features Grid",
+    "Trust Badges",
     "Pricing Table",
-    "Testimonials",
+    "Comparison Table",
+    "Bundle Offers Section",
+    "Frequently Bought Together",
+    "Customer Reviews Slider",
+    "Instagram Feed",
+    "Shipping & Returns Info",
+    "Guarantee Section",
     "FAQ Accordion",
     "Contact Form",
+    "Newsletter Signup",
     "Footer",
-    "Call to Action (CTA)",
+    "Sticky Add-to-Cart Bar",
+    "Countdown Timer",
     "Team / About",
     "Blog Feed",
+];
+
+const PSYCHOLOGY_STYLES = [
+    "Scarcity Focused",
+    "Social Proof Heavy",
+    "Storytelling Driven",
+    "Data & Statistics",
+    "Premium Brand Authority"
+];
+
+const URGENCY_STRATEGIES = [
+    "Limited Stock",
+    "Limited Time Offer",
+    "Flash Sale",
+    "New Launch",
+    "Evergreen"
+];
+
+const UPSELL_STRATEGIES = [
+    "Cart Upsell",
+    "Post-Purchase Upsell",
+    "Bundle Discount",
+    "Subscription Offer",
+    "None"
+];
+
+const TRUST_ELEMENTS = [
+    "Money Back Guarantee",
+    "Secure Payment Icons",
+    "Customer Testimonials",
+    "Influencer Reviews",
+    "Certifications"
+];
+
+const STYLES = [
+    "Premium & minimal",
+    "Bold & brutalist",
+    "Futuristic & dark",
+    "Playful & colorful",
+    "Corporate & clean",
 ];
 
 export default function WebsiteGenerator() {
@@ -85,28 +177,50 @@ export default function WebsiteGenerator() {
     const [copiedText, setCopiedText] = useState(false);
     const [copiedJson, setCopiedJson] = useState(false);
 
-    // Form State
+    // --- State ---
+
+    // Core Identity
     const [brandName, setBrandName] = useState("");
-    const [type, setType] = useState("");
-    const [targetAudience, setTargetAudience] = useState("");
-    const [goal, setGoal] = useState("");
-    const [style, setStyle] = useState("");
+    const [productType, setProductType] = useState("");
+    const [businessModel, setBusinessModel] = useState("");
+    const [targetMarket, setTargetMarket] = useState(""); // Replaces targetAudience
+    const [priceRange, setPriceRange] = useState("");
+    const [usp, setUsp] = useState("");
+    const [competitors, setCompetitors] = useState("");
+    const [brandPersonality, setBrandPersonality] = useState("");
+
+    // Tech & Style
     const [techStack, setTechStack] = useState("");
+    const [style, setStyle] = useState("");
+    const [ecomPlatform, setEcomPlatform] = useState("");
+    const [paymentIntegrations, setPaymentIntegrations] = useState<string[]>([]);
+    const [currency, setCurrency] = useState("");
+    const [shippingRegions, setShippingRegions] = useState("");
+
+    // Strategy
+    const [conversionGoal, setConversionGoal] = useState("");
+    const [trafficSource, setTrafficSource] = useState("");
+    const [funnelType, setFunnelType] = useState("");
+
+    // Structure
     const [selectedSections, setSelectedSections] = useState<string[]>([]);
 
-    const toggleSection = (section: string) => {
-        setSelectedSections((prev) =>
-            prev.includes(section)
-                ? prev.filter((s) => s !== section)
-                : [...prev, section]
-        );
+    // Conversion Optimization
+    const [psychologyStyle, setPsychologyStyle] = useState("");
+    const [urgencyStrategy, setUrgencyStrategy] = useState("");
+    const [upsellStrategy, setUpsellStrategy] = useState("");
+    const [trustElements, setTrustElements] = useState<string[]>([]);
+
+    // Toggles
+    const toggleSelection = (item: string, current: string[], setter: (val: string[]) => void) => {
+        setter(current.includes(item) ? current.filter(i => i !== item) : [...current, item]);
     };
 
     const handleGenerate = async () => {
-        if (!brandName || !type || !techStack) {
+        if (!brandName || !businessModel || !conversionGoal) {
             toast({
                 title: "Missing fields",
-                description: "Please fill in Brand Name, Type, and Tech Stack.",
+                description: "Please fill in Brand Name, Business Model, and Conversion Goal.",
                 variant: "destructive",
             });
             return;
@@ -116,18 +230,74 @@ export default function WebsiteGenerator() {
         setResult(null);
 
         try {
-            const response = await fetch("/api/generate", {
+            // E-commerce Persona Prompt Construction
+            const systemPrompt = `You are a world-class E-commerce Architect and Conversion Rate Optimization (CRO) Expert.
+            Your goal is to design a high-converting, premium e-commerce website blueprint.
+            
+            PROJECT DETAILS:
+            Brand Name: ${brandName}
+            Business Model: ${businessModel}
+            Product Type: ${productType}
+            Target Market: ${targetMarket}
+            Price Range: ${priceRange}
+            USP: ${usp}
+            Brand Personality: ${brandPersonality}
+            
+            TECH STACK:
+            Platform: ${ecomPlatform} (built with ${techStack})
+            Visual Style: ${style}
+            Payment Gateways: ${paymentIntegrations.join(", ")}
+            Currency: ${currency}
+            
+            STRATEGY:
+            Primary Goal: ${conversionGoal}
+            Funnel Type: ${funnelType}
+            Traffic Source: ${trafficSource} (Optimize for this traffic)
+            
+            CONVERSION LABS:
+            Psychology: ${psychologyStyle}
+            Urgency Strategy: ${urgencyStrategy}
+            Upsell Strategy: ${upsellStrategy}
+            Trust Signals: ${trustElements.join(", ")}
+            
+            STRUCTURE:
+            ${selectedSections.join("\n")}
+            `;
+
+            const response = await fetch("/api/website-prompt-assistant", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     type: "website",
-                    userText: `${brandName} - ${type}`,
+                    userText: systemPrompt, // Passing the full constructed context as userText for the backend handler
                     stylePreset: style,
                     platform: techStack,
-                    targetAudience,
-                    intent: goal,
+                    targetAudience: targetMarket,
+                    intent: conversionGoal,
                     extra: {
-                        sections: selectedSections
+                        sections: selectedSections,
+                        ecom: {
+                            brand_name: brandName,
+                            product_type: productType,
+                            business_model: businessModel,
+                            target_market: targetMarket,
+                            price_range: priceRange,
+                            usp,
+                            competitors,
+                            brand_personality: brandPersonality,
+                            ecommerce_platform: ecomPlatform,
+                            payment_integrations: paymentIntegrations,
+                            currency,
+                            shipping_regions: shippingRegions,
+                            conversion_goal: conversionGoal,
+                            traffic_source: trafficSource,
+                            funnel_type: funnelType,
+                            structure_sections: selectedSections,
+                            psychology_style: psychologyStyle,
+                            urgency_strategy: urgencyStrategy,
+                            upsell_strategy: upsellStrategy,
+                            trust_elements: trustElements
+                        }
                     }
                 })
             });
@@ -138,12 +308,47 @@ export default function WebsiteGenerator() {
                 throw new Error(data.error?.message || "Generation failed");
             }
 
+            // Construct specific JSON spec for E-com
+            const ecomJsonSpec = {
+                brand: {
+                    name: brandName,
+                    type: productType,
+                    model: businessModel,
+                    personality: brandPersonality,
+                    usp: usp,
+                    target: targetMarket,
+                    price: priceRange
+                },
+                business: {
+                    currency,
+                    shipping: shippingRegions,
+                    payments: paymentIntegrations
+                },
+                tech: {
+                    stack: techStack,
+                    platform: ecomPlatform,
+                    visual_style: style
+                },
+                strategy: {
+                    goal: conversionGoal,
+                    funnel: funnelType,
+                    traffic: trafficSource
+                },
+                structure: selectedSections,
+                conversion: {
+                    psychology: psychologyStyle,
+                    urgency: urgencyStrategy,
+                    upsell: upsellStrategy,
+                    trust: trustElements
+                }
+            };
+
             if (data.status === "succeeded" && data.result) {
                 setResult({
                     text: data.result.humanReadable,
-                    json: JSON.stringify(data.result.jsonPrompt, null, 2)
+                    json: JSON.stringify(ecomJsonSpec, null, 2)
                 });
-                toast({ title: "Website prompt generated!" });
+                toast({ title: "Store blueprint generated!" });
             } else {
                 throw new Error("Invalid response format");
             }
@@ -162,12 +367,32 @@ export default function WebsiteGenerator() {
 
     const handleClear = () => {
         setBrandName("");
-        setType("");
-        setTargetAudience("");
-        setGoal("");
-        setStyle("");
+        setProductType("");
+        setBusinessModel("");
+        setTargetMarket("");
+        setPriceRange("");
+        setUsp("");
+        setCompetitors("");
+        setBrandPersonality("");
+
         setTechStack("");
+        setStyle("");
+        setEcomPlatform("");
+        setPaymentIntegrations([]);
+        setCurrency("");
+        setShippingRegions("");
+
+        setConversionGoal("");
+        setTrafficSource("");
+        setFunnelType("");
+
         setSelectedSections([]);
+
+        setPsychologyStyle("");
+        setUrgencyStrategy("");
+        setUpsellStrategy("");
+        setTrustElements([]);
+
         setResult(null);
     };
 
@@ -182,6 +407,109 @@ export default function WebsiteGenerator() {
         }
         toast({ title: "Copied to clipboard" });
     };
+
+    async function askWebsiteAssistant(message: string) {
+        const form_state = {
+            website: {
+                ecom: {
+                    brand_name: brandName,
+                    product_type: productType,
+                    business_model: businessModel,
+                    target_market: targetMarket,
+                    price_range: priceRange,
+                    usp,
+                    competitors,
+                    brand_personality: brandPersonality,
+                    ecommerce_platform: ecomPlatform,
+                    tech_stack: techStack,
+                    visual_style: style,
+                    payment_integrations: paymentIntegrations,
+                    currency,
+                    shipping_regions: shippingRegions,
+                    conversion_goal: conversionGoal,
+                    traffic_source: trafficSource,
+                    funnel_type: funnelType,
+                    structure_sections: selectedSections,
+                    psychology_style: psychologyStyle,
+                    urgency_strategy: urgencyStrategy,
+                    upsell_strategy: upsellStrategy,
+                    trust_elements: trustElements
+                }
+            }
+        };
+
+        const res = await fetch("http://localhost:5000/api/website-prompt-assistant", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message, form_state }),
+        });
+
+        const json = await res.json();
+
+        if (!json.ok) {
+            toast({
+                title: "Assistant Error",
+                description: json.error || "Failed to generate website blueprint.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        const fill = json.data.fill || {};
+        const output = json.data.output || {};
+
+        // Helper for fuzzy matching options
+        const matchOption = (val: string, options: string[]) => {
+            if (!val) return "";
+            const v = val.toLowerCase();
+            return options.find(o => o.toLowerCase() === v) ||
+                options.find(o => o.toLowerCase().includes(v) || v.includes(o.toLowerCase())) ||
+                val;
+        };
+
+        // Helper for array fuzzy matching
+        const matchArray = (vals: string[], options: string[]) => {
+            if (!Array.isArray(vals)) return [];
+            return vals.map(v => matchOption(v, options)).filter(Boolean);
+        };
+
+        const e = fill.ecom || {};
+
+        if (e.brand_name) setBrandName(e.brand_name);
+        if (e.product_type) setProductType(e.product_type);
+        if (e.business_model) setBusinessModel(matchOption(e.business_model, BUSINESS_MODELS));
+        if (e.target_market) setTargetMarket(e.target_market);
+        if (e.price_range) setPriceRange(matchOption(e.price_range, PRICE_RANGES));
+        if (e.usp) setUsp(e.usp);
+        if (e.competitors) setCompetitors(e.competitors);
+        if (e.brand_personality) setBrandPersonality(matchOption(e.brand_personality, BRAND_PERSONALITIES));
+
+        if (e.ecommerce_platform) setEcomPlatform(matchOption(e.ecommerce_platform, ECOM_PLATFORMS));
+        if (e.tech_stack) setTechStack(matchOption(e.tech_stack, TECH_STACKS));
+        if (e.visual_style) setStyle(matchOption(e.visual_style, STYLES));
+        if (e.payment_integrations) setPaymentIntegrations(matchArray(e.payment_integrations, PAYMENT_GATEWAYS));
+        if (e.currency) setCurrency(e.currency);
+        if (e.shipping_regions) setShippingRegions(e.shipping_regions);
+
+        if (e.conversion_goal) setConversionGoal(matchOption(e.conversion_goal, CONVERSION_GOALS));
+        if (e.traffic_source) setTrafficSource(matchOption(e.traffic_source, TRAFFIC_SOURCES));
+        if (e.funnel_type) setFunnelType(matchOption(e.funnel_type, FUNNEL_TYPES));
+
+        if (e.structure_sections) setSelectedSections(matchArray(e.structure_sections, SECTIONS));
+
+        if (e.psychology_style) setPsychologyStyle(matchOption(e.psychology_style, PSYCHOLOGY_STYLES));
+        if (e.urgency_strategy) setUrgencyStrategy(matchOption(e.urgency_strategy, URGENCY_STRATEGIES));
+        if (e.upsell_strategy) setUpsellStrategy(matchOption(e.upsell_strategy, UPSELL_STRATEGIES));
+        if (e.trust_elements) setTrustElements(matchArray(e.trust_elements, TRUST_ELEMENTS));
+
+        // Output Preview
+        if (output.prompt) {
+            setResult({
+                text: output.prompt,
+                json: JSON.stringify(output.json_spec || {}, null, 2)
+            });
+        }
+    }
 
     return (
         <div className="min-h-screen bg-background font-sans selection:bg-primary/20">
@@ -203,54 +531,76 @@ export default function WebsiteGenerator() {
                             <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 mb-4 backdrop-blur-md">
                                 <Sparkles className="w-3.5 h-3.5 text-primary" />
                                 <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-                                    AI Architect
+                                    Store Architect
                                 </span>
                             </div>
                             <h1 className="text-4xl font-bold tracking-tight mb-3">
-                                <span className={THEME.gradientText}>Website Prompt Generator</span>
+                                <span className={THEME.gradientText}>E-commerce Blueprint Generator</span>
                             </h1>
                             <p className="text-muted-foreground text-lg max-w-2xl leading-relaxed">
-                                Define your vision, and we'll architect the perfect prompt for AI website builders like Prompt Weaver, Bolt, and v0.
+                                Design high-converting Shopify stores, funnels, and brand experiences with AI-guided architecture.
                             </p>
                         </div>
 
                         <div className="h-px w-full bg-border/40" />
 
-                        {/* SECTION 1: CORE IDENTITY */}
+                        {/* SECTION 1: E-COMMERCE BRAND OVERVIEW */}
                         <section className={cn(THEME.glassCard, "p-6 space-y-6 hover:border-primary/20 transition-colors duration-500")}>
                             <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                                    <Globe className="w-5 h-5" />
+                                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+                                    <ShoppingBag className="w-5 h-5" />
                                 </div>
                                 <div>
-                                    <h3 className="font-semibold text-lg">Core Identity</h3>
-                                    <p className="text-xs text-muted-foreground">Define what you are building.</p>
+                                    <h3 className="font-semibold text-lg">Brand & Market</h3>
+                                    <p className="text-xs text-muted-foreground">Define your business model and identity.</p>
                                 </div>
                             </div>
 
                             <div className="grid sm:grid-cols-2 gap-5">
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Project Name</Label>
-                                    <Input
-                                        placeholder="e.g. Nexus Dashboard"
-                                        value={brandName}
-                                        onChange={(e) => setBrandName(e.target.value)}
-                                        className="bg-background/40 border-white/10 focus:border-primary/50 focus:ring-primary/20 h-10"
-                                    />
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Brand Name</Label>
+                                    <Input placeholder="e.g. Lumina Haus" value={brandName} onChange={e => setBrandName(e.target.value)} className="bg-background/40 border-white/10" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Website Type</Label>
-                                    <Select value={type} onValueChange={setType}>
-                                        <SelectTrigger className="bg-background/40 border-white/10 focus:ring-primary/20 h-10">
-                                            <SelectValue placeholder="Select type..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {WEBSITE_TYPES.map((t) => (
-                                                <SelectItem key={t} value={t}>{t}</SelectItem>
-                                            ))}
-                                        </SelectContent>
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Product Type</Label>
+                                    <Input placeholder="e.g. Modern Furniture" value={productType} onChange={e => setProductType(e.target.value)} className="bg-background/40 border-white/10" />
+                                </div>
+                            </div>
+
+                            <div className="grid sm:grid-cols-2 gap-5">
+                                <div className="space-y-2">
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Business Model</Label>
+                                    <Select value={businessModel} onValueChange={setBusinessModel}>
+                                        <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
+                                        <SelectContent>{BUSINESS_MODELS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
                                     </Select>
                                 </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Price Range</Label>
+                                    <Select value={priceRange} onValueChange={setPriceRange}>
+                                        <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
+                                        <SelectContent>{PRICE_RANGES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="grid sm:grid-cols-2 gap-5">
+                                <div className="space-y-2">
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Target Market</Label>
+                                    <Input placeholder="e.g. Remote WFH Professionals" value={targetMarket} onChange={e => setTargetMarket(e.target.value)} className="bg-background/40 border-white/10" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Brand Personality</Label>
+                                    <Select value={brandPersonality} onValueChange={setBrandPersonality}>
+                                        <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
+                                        <SelectContent>{BRAND_PERSONALITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Unique Selling Proposition (USP)</Label>
+                                <Textarea placeholder="What makes your brand unique? e.g. Sustainable materials, lifetime warranty..." value={usp} onChange={e => setUsp(e.target.value)} className="bg-background/40 border-white/10 min-h-[60px]" />
                             </div>
                         </section>
 
@@ -261,96 +611,179 @@ export default function WebsiteGenerator() {
                                     <Monitor className="w-5 h-5" />
                                 </div>
                                 <div>
-                                    <h3 className="font-semibold text-lg">Tech & Style</h3>
-                                    <p className="text-xs text-muted-foreground">Choose your stack and aesthetic.</p>
+                                    <h3 className="font-semibold text-lg">Tech & Ops</h3>
+                                    <p className="text-xs text-muted-foreground">Platform, payments, and regional details.</p>
                                 </div>
                             </div>
 
                             <div className="grid sm:grid-cols-2 gap-5">
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Tech Stack</Label>
-                                    <Select value={techStack} onValueChange={setTechStack}>
-                                        <SelectTrigger className="bg-background/40 border-white/10 focus:ring-primary/20 h-10">
-                                            <SelectValue placeholder="Target platform..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {TECH_STACKS.map((t) => (
-                                                <SelectItem key={t} value={t}>{t}</SelectItem>
-                                            ))}
-                                        </SelectContent>
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">E-commerce Platform</Label>
+                                    <Select value={ecomPlatform} onValueChange={setEcomPlatform}>
+                                        <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select platform..." /></SelectTrigger>
+                                        <SelectContent>{ECOM_PLATFORMS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Visual Style</Label>
-                                    <Select value={style} onValueChange={setStyle}>
-                                        <SelectTrigger className="bg-background/40 border-white/10 focus:ring-primary/20 h-10">
-                                            <SelectValue placeholder="Select style..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {STYLES.map((s) => (
-                                                <SelectItem key={s} value={s}>{s}</SelectItem>
-                                            ))}
-                                        </SelectContent>
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Tech Stack (Implementation)</Label>
+                                    <Select value={techStack} onValueChange={setTechStack}>
+                                        <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select tech..." /></SelectTrigger>
+                                        <SelectContent>{TECH_STACKS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                                     </Select>
                                 </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Payment Integrations</Label>
+                                <div className="flex flex-wrap gap-2">
+                                    {PAYMENT_GATEWAYS.map((gateway) => (
+                                        <button
+                                            key={gateway}
+                                            onClick={() => toggleSelection(gateway, paymentIntegrations, setPaymentIntegrations)}
+                                            className={cn(
+                                                "px-3 py-1.5 rounded-md text-xs font-medium border transition-all",
+                                                paymentIntegrations.includes(gateway)
+                                                    ? "bg-indigo-500/20 border-indigo-500/50 text-indigo-200"
+                                                    : "bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10"
+                                            )}
+                                        >
+                                            {gateway}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="grid sm:grid-cols-2 gap-5">
+                                <div className="space-y-2">
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Store Currency</Label>
+                                    <Input placeholder="e.g. USD, EUR" value={currency} onChange={e => setCurrency(e.target.value)} className="bg-background/40 border-white/10" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Shipping Regions</Label>
+                                    <Input placeholder="e.g. Global, US Only" value={shippingRegions} onChange={e => setShippingRegions(e.target.value)} className="bg-background/40 border-white/10" />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2 pt-2">
+                                <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Visual Style</Label>
+                                <Select value={style} onValueChange={setStyle}>
+                                    <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select style..." /></SelectTrigger>
+                                    <SelectContent>{STYLES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                                </Select>
                             </div>
                         </section>
 
                         {/* SECTION 3: STRATEGY */}
                         <section className={cn(THEME.glassCard, "p-6 space-y-6 hover:border-primary/20 transition-colors duration-500")}>
                             <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400">
+                                <div className="p-2 rounded-lg bg-orange-500/10 text-orange-400">
                                     <Target className="w-5 h-5" />
                                 </div>
                                 <div>
-                                    <h3 className="font-semibold text-lg">Strategy</h3>
-                                    <p className="text-xs text-muted-foreground">Who is this for and why?</p>
+                                    <h3 className="font-semibold text-lg">Funnel & Strategy</h3>
+                                    <p className="text-xs text-muted-foreground">How will you acquire and convert traffic?</p>
                                 </div>
                             </div>
 
-                            <div className="grid sm:grid-cols-2 gap-5">
+                            <div className="grid sm:grid-cols-3 gap-5">
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Target Audience</Label>
-                                    <Input
-                                        placeholder="e.g. Freelance Designers"
-                                        value={targetAudience}
-                                        onChange={(e) => setTargetAudience(e.target.value)}
-                                        className="bg-background/40 border-white/10 focus:border-primary/50 focus:ring-primary/20 h-10"
-                                    />
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Conversion Goal</Label>
+                                    <Select value={conversionGoal} onValueChange={setConversionGoal}>
+                                        <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
+                                        <SelectContent>{CONVERSION_GOALS.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
+                                    </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Primary Goal</Label>
-                                    <Select value={goal} onValueChange={setGoal}>
-                                        <SelectTrigger className="bg-background/40 border-white/10 focus:ring-primary/20 h-10">
-                                            <SelectValue placeholder="Main objective..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {GOALS.map((g) => (
-                                                <SelectItem key={g} value={g}>{g}</SelectItem>
-                                            ))}
-                                        </SelectContent>
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Traffic Source</Label>
+                                    <Select value={trafficSource} onValueChange={setTrafficSource}>
+                                        <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
+                                        <SelectContent>{TRAFFIC_SOURCES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Funnel Type</Label>
+                                    <Select value={funnelType} onValueChange={setFunnelType}>
+                                        <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
+                                        <SelectContent>{FUNNEL_TYPES.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
                                     </Select>
                                 </div>
                             </div>
                         </section>
 
-                        {/* SECTION 4: STRUCTURE */}
+                        {/* SECTION 4: CONVERSION OPTIMIZATION (NEW) */}
+                        <section className={cn(THEME.glassCard, "p-6 space-y-6 hover:border-primary/20 transition-colors duration-500")}>
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="p-2 rounded-lg bg-yellow-500/10 text-yellow-400">
+                                    <TrendingUp className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-lg">Experience & CRO</h3>
+                                    <p className="text-xs text-muted-foreground">Sales psychology and trust elements.</p>
+                                </div>
+                            </div>
+
+                            <div className="grid sm:grid-cols-3 gap-5">
+                                <div className="space-y-2">
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Psychology</Label>
+                                    <Select value={psychologyStyle} onValueChange={setPsychologyStyle}>
+                                        <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
+                                        <SelectContent>{PSYCHOLOGY_STYLES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Urgency Strategy</Label>
+                                    <Select value={urgencyStrategy} onValueChange={setUrgencyStrategy}>
+                                        <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
+                                        <SelectContent>{URGENCY_STRATEGIES.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Upsell Strategy</Label>
+                                    <Select value={upsellStrategy} onValueChange={setUpsellStrategy}>
+                                        <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
+                                        <SelectContent>{UPSELL_STRATEGIES.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Trust & Credibility Elements</Label>
+                                <div className="flex flex-wrap gap-2">
+                                    {TRUST_ELEMENTS.map((trust) => (
+                                        <button
+                                            key={trust}
+                                            onClick={() => toggleSelection(trust, trustElements, setTrustElements)}
+                                            className={cn(
+                                                "px-3 py-1.5 rounded-md text-xs font-medium border transition-all",
+                                                trustElements.includes(trust)
+                                                    ? "bg-yellow-500/20 border-yellow-500/50 text-yellow-200"
+                                                    : "bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10"
+                                            )}
+                                        >
+                                            {trust}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* SECTION 5: STRUCTURE */}
                         <section className={cn(THEME.glassCard, "p-6 space-y-5 hover:border-primary/20 transition-colors duration-500")}>
                             <div className="flex items-center gap-3 mb-1">
                                 <div className="p-2 rounded-lg bg-pink-500/10 text-pink-400">
                                     <Layers className="w-5 h-5" />
                                 </div>
                                 <div>
-                                    <h3 className="font-semibold text-lg">Structure</h3>
-                                    <p className="text-xs text-muted-foreground">Select sections to include.</p>
+                                    <h3 className="font-semibold text-lg">Site Structure</h3>
+                                    <p className="text-xs text-muted-foreground">Select pages and sections to include.</p>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3">
                                 {SECTIONS.map((section) => (
                                     <button
                                         key={section}
-                                        onClick={() => toggleSection(section)}
+                                        onClick={() => toggleSelection(section, selectedSections, setSelectedSections)}
                                         className={cn(
                                             "group relative flex items-center justify-between text-xs font-medium px-4 py-3 rounded-xl border transition-all duration-200 text-left",
                                             selectedSections.includes(section)
@@ -485,7 +918,7 @@ export default function WebsiteGenerator() {
                                         </div>
                                         <h3 className="text-xl font-bold text-foreground">Awaiting Blueprint</h3>
                                         <p className="text-sm text-muted-foreground max-w-[260px] mt-3 leading-relaxed">
-                                            Configure your project details on the left to generate a professional structural prompt.
+                                            Define your business model and strategy to generate a professional e-commerce architecture.
                                         </p>
                                     </motion.div>
                                 )}
@@ -495,6 +928,7 @@ export default function WebsiteGenerator() {
 
                 </div>
             </main>
+            <WebsiteAssistantWidget onSend={askWebsiteAssistant} />
         </div>
     );
 }

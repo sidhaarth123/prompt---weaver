@@ -65,11 +65,11 @@ export async function generatePrompt(
 }
 
 /**
- * Generate prompt using Gemini on the server
- * NEW: This calls /api/generate instead of n8n workflow
+ * Generate prompt using AI on the server
+ * Calls /api/prompt-assistant which uses our prompt assistant service
  * Provides strict schema validation and guaranteed correct output
  */
-export async function generatePromptWithGemini(
+export async function generatePromptWithAI(
   request: GenerateRequest
 ): Promise<GenerateResponse> {
   // Get session token
@@ -82,8 +82,8 @@ export async function generatePromptWithGemini(
     throw new Error("Authentication required");
   }
 
-  // Call our Gemini-powered API endpoint
-  const response = await fetch("/api/generate", {
+  // Call our AI-powered API endpoint
+  const response = await fetch("/api/prompt-assistant", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

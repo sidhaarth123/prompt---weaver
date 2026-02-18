@@ -8,7 +8,7 @@ import { z } from "zod";
 export const JsonPromptSchema = z.object({
     prompt: z.string().min(1, "Prompt cannot be empty"),
     negativePrompt: z.string().optional(),
-    model: z.string().default("gemini-2.0-flash"),
+    model: z.string().default("gpt-4o"),
     aspectRatio: z.enum(["1:1", "4:5", "16:9", "9:16", "1.91:1"]).optional(),
     stylePreset: z.string().optional(),
     quality: z.string().optional(),
