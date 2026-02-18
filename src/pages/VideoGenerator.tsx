@@ -30,9 +30,10 @@ import {
     Smartphone,
     Monitor,
     ShoppingBag,
-    TrendingUp
+    TrendingUp,
+    Sparkles
 } from "lucide-react";
-import VideoAssistantWidget from "@/components/VideoAssistantWidget";
+import AssistantTypingIndicator from "@/components/AssistantTypingIndicator";
 
 // --- Constants ---
 
@@ -174,6 +175,20 @@ export default function VideoGenerator() {
     const [pacing, setPacing] = useState("");
     const [focus, setFocus] = useState("");
     const [amazonCompliant, setAmazonCompliant] = useState(false);
+
+    // --- Assistant State ---
+    const [assistantInput, setAssistantInput] = useState("");
+    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'assistant', content: string }[]>([]);
+
+    const handleAssistantSubmit = async () => {
+        if (!assistantInput.trim()) return;
+
+        const userMsg = assistantInput;
+        setChatHistory(prev => [...prev, { role: 'user', content: userMsg }]);
+        setAssistantInput("");
+
+        await askVideoAssistant(userMsg);
+    };
 
     const applyTemplate = (templateName: string) => {
         const t = TEMPLATES.find(t => t.label === templateName);
@@ -355,6 +370,7 @@ export default function VideoGenerator() {
         setAmazonCompliant(false);
 
         setResult(null);
+        setChatHistory([]);
     };
 
     const copyToClipboard = async (text: string, isJson: boolean) => {
@@ -370,6 +386,7 @@ export default function VideoGenerator() {
     };
 
     async function askVideoAssistant(message: string) {
+        setLoading(true);
         const form_state = {
             platform,
             video_style: style,
@@ -405,88 +422,100 @@ export default function VideoGenerator() {
             }
         };
 
+        try {
+            const res = await fetch("http://localhost:5000/api/video-prompt-assistant", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message, form_state }),
+            });
 
-        const res = await fetch("http://localhost:5000/api/video-prompt-assistant", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message, form_state }),
-        });
+            const json = await res.json();
 
-        const json = await res.json();
+            if (!json.ok) {
+                // throw error to be caught below
+                throw new Error(json.error || "Failed to generate video prompt.");
+            }
 
-        if (!json.ok) {
+            const fill = json.data.fill || {};
+            const output = json.data.output || {};
+
+            // Add Assistant Response to Chat
+            setChatHistory(prev => [...prev, {
+                role: 'assistant',
+                content: "I've structured your video concept into a production-ready script and JSON spec."
+            }]);
+
+            // Helper for fuzzy matching options
+            const matchOption = (val: string, options: string[]) => {
+                if (!val) return "";
+                const v = val.toLowerCase();
+                // Try exact, then partial (either direction)
+                return options.find(o => o.toLowerCase() === v) ||
+                    options.find(o => o.toLowerCase().includes(v) || v.includes(o.toLowerCase())) ||
+                    val;
+            };
+
+            // Apply Fill
+            if (fill.platform) setPlatform(matchOption(fill.platform, PLATFORMS));
+            if (fill.video_style) setStyle(matchOption(fill.video_style, STYLES));
+            if (fill.aspect_ratio) setAspectRatio(fill.aspect_ratio); // already normalized by backend
+            if (fill.duration) setDuration([Number(fill.duration)]);
+
+            // Handle Template (Set state but don't apply logic to avoid overwriting assistant's specific details)
+            const templateOptions = TEMPLATES.map(t => t.label);
+            if (fill.template) setTemplate(matchOption(fill.template, templateOptions));
+
+            if (fill.hook) setHook(fill.hook);
+            if (fill.scene_beats) setBeats(fill.scene_beats);
+            if (fill.visual_details) setVisuals(fill.visual_details);
+            if (fill.characters_props) setCharacters(fill.characters_props);
+            if (fill.on_screen_text) setTextOverlay(fill.on_screen_text);
+            if (fill.negative_constraints) setNegative(fill.negative_constraints);
+
+            if (typeof fill.voiceover === 'boolean') setVoiceover(fill.voiceover);
+            if (typeof fill.music_sfx === 'boolean') setMusic(fill.music_sfx);
+
+            // Apply E-com Fill
+            if (fill.ecom) {
+                const e = fill.ecom;
+                if (e.product_name) setProductName(e.product_name);
+                if (e.category) setCategory(matchOption(e.category, PRODUCT_CATEGORIES));
+                if (e.brand_name) setBrandName(e.brand_name);
+                if (e.target_customer) setTargetCustomer(e.target_customer);
+                if (e.benefits) setBenefits(e.benefits);
+                if (e.offer) setOffer(e.offer);
+                if (e.price) setPrice(e.price);
+                if (e.variants) setVariants(e.variants);
+
+                if (e.campaign_objective) setObjective(matchOption(e.campaign_objective, CAMPAIGN_OBJECTIVES));
+                if (e.hook_style) setHookStyle(matchOption(e.hook_style, HOOK_STYLES));
+                if (e.cta) setCta(matchOption(e.cta, CALL_TO_ACTIONS));
+                if (e.urgency) setUrgency(matchOption(e.urgency, URGENCY_STYLES));
+                if (e.social_proof) setSocialProof(matchOption(e.social_proof, SOCIAL_PROOF_TYPES));
+
+                if (e.ad_tone) setAdTone(matchOption(e.ad_tone, AD_TONES));
+                if (e.pacing) setPacing(matchOption(e.pacing, VIDEO_PACING));
+                if (e.visual_focus) setFocus(matchOption(e.visual_focus, VISUAL_FOCUS));
+
+                if (typeof e.amazon_compliant === 'boolean') setAmazonCompliant(e.amazon_compliant);
+            }
+
+            // Output Preview
+            if (output.prompt) {
+                setResult({
+                    text: output.prompt,
+                    json: JSON.stringify(output.json_spec || {}, null, 2)
+                });
+            }
+        } catch (error: any) {
+            console.error("Video assistant error:", error);
             toast({
                 title: "Assistant Error",
-                description: json.error || "Failed to generate video prompt.",
+                description: error.message || "Failed to generate video prompt.",
                 variant: "destructive",
             });
-            return;
-        }
-
-        const fill = json.data.fill || {};
-        const output = json.data.output || {};
-
-        // Helper for fuzzy matching options
-        const matchOption = (val: string, options: string[]) => {
-            if (!val) return "";
-            const v = val.toLowerCase();
-            // Try exact, then partial (either direction)
-            return options.find(o => o.toLowerCase() === v) ||
-                options.find(o => o.toLowerCase().includes(v) || v.includes(o.toLowerCase())) ||
-                val;
-        };
-
-        // Apply Fill
-        if (fill.platform) setPlatform(matchOption(fill.platform, PLATFORMS));
-        if (fill.video_style) setStyle(matchOption(fill.video_style, STYLES));
-        if (fill.aspect_ratio) setAspectRatio(fill.aspect_ratio); // already normalized by backend
-        if (fill.duration) setDuration([Number(fill.duration)]);
-
-        // Handle Template (Set state but don't apply logic to avoid overwriting assistant's specific details)
-        const templateOptions = TEMPLATES.map(t => t.label);
-        if (fill.template) setTemplate(matchOption(fill.template, templateOptions));
-
-        if (fill.hook) setHook(fill.hook);
-        if (fill.scene_beats) setBeats(fill.scene_beats);
-        if (fill.visual_details) setVisuals(fill.visual_details);
-        if (fill.characters_props) setCharacters(fill.characters_props);
-        if (fill.on_screen_text) setTextOverlay(fill.on_screen_text);
-        if (fill.negative_constraints) setNegative(fill.negative_constraints);
-
-        if (typeof fill.voiceover === 'boolean') setVoiceover(fill.voiceover);
-        if (typeof fill.music_sfx === 'boolean') setMusic(fill.music_sfx);
-
-        // Apply E-com Fill
-        if (fill.ecom) {
-            const e = fill.ecom;
-            if (e.product_name) setProductName(e.product_name);
-            if (e.category) setCategory(matchOption(e.category, PRODUCT_CATEGORIES));
-            if (e.brand_name) setBrandName(e.brand_name);
-            if (e.target_customer) setTargetCustomer(e.target_customer);
-            if (e.benefits) setBenefits(e.benefits);
-            if (e.offer) setOffer(e.offer);
-            if (e.price) setPrice(e.price);
-            if (e.variants) setVariants(e.variants);
-
-            if (e.campaign_objective) setObjective(matchOption(e.campaign_objective, CAMPAIGN_OBJECTIVES));
-            if (e.hook_style) setHookStyle(matchOption(e.hook_style, HOOK_STYLES));
-            if (e.cta) setCta(matchOption(e.cta, CALL_TO_ACTIONS));
-            if (e.urgency) setUrgency(matchOption(e.urgency, URGENCY_STYLES));
-            if (e.social_proof) setSocialProof(matchOption(e.social_proof, SOCIAL_PROOF_TYPES));
-
-            if (e.ad_tone) setAdTone(matchOption(e.ad_tone, AD_TONES));
-            if (e.pacing) setPacing(matchOption(e.pacing, VIDEO_PACING));
-            if (e.visual_focus) setFocus(matchOption(e.visual_focus, VISUAL_FOCUS));
-
-            if (typeof e.amazon_compliant === 'boolean') setAmazonCompliant(e.amazon_compliant);
-        }
-
-        // Output Preview
-        if (output.prompt) {
-            setResult({
-                text: output.prompt,
-                json: JSON.stringify(output.json_spec || {}, null, 2)
-            });
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -539,6 +568,11 @@ export default function VideoGenerator() {
                         </div>
 
                         <div className="h-px w-full bg-border/40" />
+
+                        <div className="flex items-center justify-between pb-2">
+                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Manual Controls (Optional)</h3>
+                            <span className="text-xs text-muted-foreground/60 italic">The assistant can auto-fill everything</span>
+                        </div>
 
                         {/* NEW: E-COMMERCE PRODUCT BRIEF */}
                         <section className={cn(THEME.glassCard, "p-6 space-y-6 hover:border-primary/20 transition-colors duration-500")}>
@@ -888,7 +922,7 @@ export default function VideoGenerator() {
                             </div>
                         </section>
 
-                        {/* ACTIONS */}
+                        {/* ACTIONS - HIDDEN GENERATE BUTTON */}
                         <div className="flex gap-4 pt-4 sticky bottom-6 z-20">
                             <Button
                                 variant="outline"
@@ -897,126 +931,167 @@ export default function VideoGenerator() {
                             >
                                 <Trash2 className="w-4 h-4 mr-2" /> Clear
                             </Button>
-                            <Button
-                                onClick={handleGenerate}
-                                disabled={loading}
-                                className={cn("flex-1 h-12 text-base font-semibold rounded-xl shadow-lg shadow-primary/20 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 transition-all hover:scale-[1.02]")}
-                            >
-                                {loading ? (
-                                    <>
-                                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Generating Screenplay...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Video className="w-4 h-4 mr-2" /> Generate Video Prompt
-                                    </>
-                                )}
-                            </Button>
+                            {/* Hidden but logic preserved */}
+                            {/* <Button onClick={handleGenerate} ...> ... </Button> */}
                         </div>
                     </div>
 
-                    {/* RIGHT: OUTPUTS (Sticky) */}
-                    <div className="lg:sticky lg:top-24 space-y-4 h-fit animate-in fade-in slide-in-from-right-4 duration-700 delay-100">
-                        <div className="flex items-center justify-between px-1">
-                            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                <Code2 className="w-4 h-4" /> Output Preview
-                            </h2>
-                            {result && (
-                                <span className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-md animate-pulse">
-                                    Ready
-                                </span>
-                            )}
+                    {/* RIGHT: VIDEO PERFORMANCE ASSISTANT PANEL */}
+                    <div className="lg:sticky lg:top-24 h-[calc(100vh-120px)] flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-700 delay-100">
+
+                        {/* 1. ASSISTANT HEADER & INPUT */}
+                        <div className={cn(THEME.glassCard, "p-5 space-y-4 border-primary/20 shadow-2xl relative overflow-hidden group")}>
+                            {/* Glow Effect */}
+                            <div className="absolute top-0 right-0 p-20 bg-primary/10 blur-[80px] rounded-full pointer-events-none group-hover:bg-primary/20 transition-all duration-1000" />
+
+                            <div className="flex items-center justify-between relative z-10">
+                                <div>
+                                    <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70 flex items-center gap-2">
+                                        <Sparkles className="w-5 h-5 text-orange-400 fill-orange-400/20" />
+                                        Video Performance Assistant
+                                    </h2>
+                                    <p className="text-xs text-orange-300/80 font-medium mt-1">
+                                        Auto-fills fields + generates high-converting e-commerce video prompts
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Online</span>
+                                </div>
+                            </div>
+
+                            {/* CHIPS */}
+                            <div className="flex flex-wrap gap-2 relative z-10">
+                                {["15s TikTok UGC ad", "Amazon listing demo", "Problem → Solution hook", "Premium Shopify promo", "Offer + urgency ad"].map((chip) => (
+                                    <button
+                                        key={chip}
+                                        onClick={() => setAssistantInput(chip)}
+                                        className="text-[10px] px-2.5 py-1 rounded-full bg-white/5 border border-white/5 hover:bg-primary/20 hover:border-primary/30 hover:text-primary transition-all cursor-pointer"
+                                    >
+                                        {chip}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* INPUT AREA */}
+                            <div className="relative z-10 group/input">
+                                <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl opacity-20 group-hover/input:opacity-40 transition duration-500 blur-sm" />
+                                <div className="relative bg-[#0F0F12] rounded-xl p-1">
+                                    <Textarea
+                                        placeholder="Describe your product ad... e.g., 15s UGC skincare ad, 9:16, strong hook, testimonial + CTA."
+                                        value={assistantInput}
+                                        onChange={(e) => setAssistantInput(e.target.value)}
+                                        className="min-h-[80px] w-full resize-none border-0 bg-transparent p-3 text-sm focus-visible:ring-0 placeholder:text-muted-foreground/50"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault();
+                                                handleAssistantSubmit();
+                                            }
+                                        }}
+                                        autoFocus
+                                    />
+                                    <div className="flex justify-between items-center px-2 pb-2">
+                                        <span className="text-[10px] text-muted-foreground/60 pl-2">Press Enter to generate</span>
+                                        <Button
+                                            size="sm"
+                                            onClick={handleAssistantSubmit}
+                                            disabled={loading || !assistantInput.trim()}
+                                            className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white shadow-lg shadow-orange-500/20 border-0 h-8 px-4 rounded-lg font-medium text-xs transition-all hover:scale-105 active:scale-95"
+                                        >
+                                            {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}
+                                            Auto-Fill & Generate
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="min-h-[600px]">
-                            <AnimatePresence mode="wait">
-                                {result ? (
-                                    <motion.div
-                                        key="result"
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.98 }}
-                                        className={cn(THEME.glassCard, "overflow-hidden flex flex-col shadow-2xl border-primary/20")}
-                                    >
-                                        <Tabs defaultValue="text" className="w-full flex-1 flex flex-col">
-                                            <div className="border-b border-white/5 bg-background/40 px-3 pb-0 pt-3 backdrop-blur-sm">
-                                                <TabsList className="w-full bg-transparent border-b-0 p-0 h-auto gap-1">
-                                                    <TabsTrigger
-                                                        value="text"
-                                                        className="flex-1 rounded-t-lg rounded-b-none border border-transparent border-b-0 py-2.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/20 transition-all font-medium text-xs uppercase tracking-wide"
-                                                    >
-                                                        Prompt
-                                                    </TabsTrigger>
-                                                    <TabsTrigger
-                                                        value="json"
-                                                        className="flex-1 rounded-t-lg rounded-b-none border border-transparent border-b-0 py-2.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/20 transition-all font-medium text-xs uppercase tracking-wide"
-                                                    >
-                                                        JSON Spec
-                                                    </TabsTrigger>
-                                                </TabsList>
-                                            </div>
+                        {/* 2. CHAT HISTORY (Middle) */}
+                        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 px-1 min-h-[100px]">
+                            {chatHistory.length === 0 && !result && (
+                                <div className="h-full flex flex-col items-center justify-center text-center p-8 opacity-40">
+                                    <Clapperboard className="w-12 h-12 mb-4 text-primary/50" />
+                                    <p className="text-sm font-medium">Video Director ready.</p>
+                                    <p className="text-xs">Type a concept above to start.</p>
+                                </div>
+                            )}
+                            {chatHistory.map((msg, idx) => (
+                                <motion.div
+                                    key={idx}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className={cn(
+                                        "flex w-full mb-4",
+                                        msg.role === 'user' ? "justify-end" : "justify-start"
+                                    )}
+                                >
+                                    <div className={cn(
+                                        "max-w-[85%] rounded-2xl p-3 text-sm shadow-md backdrop-blur-md",
+                                        msg.role === 'user'
+                                            ? "bg-primary/20 text-white rounded-tr-sm border border-primary/20"
+                                            : "bg-muted/40 text-foreground/90 rounded-tl-sm border border-white/5"
+                                    )}>
+                                        {msg.content}
+                                    </div>
+                                </motion.div>
+                            ))}
+                            {loading && <AssistantTypingIndicator />}
+                        </div>
 
-                                            <div className="relative flex-1 bg-[#09090b]">
-                                                <TabsContent value="text" className="m-0 h-full">
-                                                    <div className="relative h-full text-area-wrapper group">
-                                                        <Button
-                                                            variant="secondary"
-                                                            size="icon"
-                                                            onClick={() => copyToClipboard(result.text, false)}
-                                                            className="absolute top-4 right-4 h-9 w-9 bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-white z-10 transition-all opacity-0 group-hover:opacity-100"
-                                                        >
-                                                            {copiedText ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                                                        </Button>
-                                                        <Textarea
-                                                            value={result.text}
-                                                            readOnly
-                                                            className="h-full min-h-[500px] w-full resize-none border-0 bg-transparent p-6 font-mono text-sm leading-relaxed text-slate-300 focus-visible:ring-0 selection:bg-primary/30"
-                                                            style={{ fontFamily: '"Geist Mono", monospace' }}
-                                                        />
-                                                    </div>
-                                                </TabsContent>
+                        {/* 3. OUTPUT RESULT (Bottom) */}
+                        <div className="shrink-0 min-h-[300px] max-h-[50%] flex flex-col">
+                            {result ? (
+                                <motion.div
+                                    key="result"
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.98 }}
+                                    className={cn(THEME.glassCard, "flex-1 overflow-hidden flex flex-col shadow-2xl border-primary/20 rounded-xl relative")}
+                                >
+                                    {/* Soft Glow Border */}
+                                    <div className="absolute inset-0 border border-primary/20 rounded-xl pointer-events-none z-20" />
 
-                                                <TabsContent value="json" className="m-0 h-full">
-                                                    <div className="relative h-full group">
-                                                        <Button
-                                                            variant="secondary"
-                                                            size="icon"
-                                                            onClick={() => copyToClipboard(result.json, true)}
-                                                            className="absolute top-4 right-4 h-9 w-9 bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-white z-10 transition-all opacity-0 group-hover:opacity-100"
-                                                        >
-                                                            {copiedJson ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                                                        </Button>
-                                                        <pre className="h-full min-h-[500px] w-full overflow-auto p-6 text-xs text-xs font-mono text-emerald-400 leading-relaxed custom-scrollbar">
-                                                            {result.json}
-                                                        </pre>
-                                                    </div>
-                                                </TabsContent>
+                                    <Tabs defaultValue="text" className="w-full flex-1 flex flex-col">
+                                        <div className="border-b border-white/5 bg-background/40 px-3 py-2 backdrop-blur-sm flex justify-between items-center">
+                                            <TabsList className="bg-transparent border-0 p-0 h-auto gap-2">
+                                                <TabsTrigger value="text" className="data-[state=active]:bg-primary/20 h-7 text-[10px] px-3 rounded-full">PROMPT</TabsTrigger>
+                                                <TabsTrigger value="json" className="data-[state=active]:bg-primary/20 h-7 text-[10px] px-3 rounded-full">JSON SPEC</TabsTrigger>
+                                            </TabsList>
+                                            <div className="flex gap-2">
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => copyToClipboard(result.text, false)}>
+                                                    <Copy className="w-3.5 h-3.5" />
+                                                </Button>
                                             </div>
-                                        </Tabs>
-                                    </motion.div>
-                                ) : (
-                                    <motion.div
-                                        key="empty"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        className="h-full flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-12 text-center min-h-[500px]"
-                                    >
-                                        <div className="h-20 w-20 rounded-full bg-gradient-to-br from-red-500/20 to-orange-500/20 flex items-center justify-center mb-6 ring-1 ring-white/10 animate-pulse">
-                                            <Clapperboard className="h-10 w-10 text-red-500/80" />
                                         </div>
-                                        <h3 className="text-xl font-bold text-foreground">Awaiting Direction</h3>
-                                        <p className="text-sm text-muted-foreground max-w-[260px] mt-3 leading-relaxed">
-                                            Set the scene, define the beats, and generate a director-level video prompt.
-                                        </p>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+
+                                        <div className="relative flex-1 bg-[#09090b]">
+                                            <TabsContent value="text" className="m-0 h-full">
+                                                <Textarea
+                                                    value={result.text}
+                                                    readOnly
+                                                    className="h-full w-full resize-none border-0 bg-transparent p-4 font-mono text-xs leading-relaxed text-slate-300 focus-visible:ring-0"
+                                                    style={{ fontFamily: '"Geist Mono", monospace' }}
+                                                />
+                                            </TabsContent>
+                                            <TabsContent value="json" className="m-0 h-full">
+                                                <pre className="h-full w-full overflow-auto p-4 text-[10px] font-mono text-emerald-400 leading-relaxed custom-scrollbar">
+                                                    {result.json}
+                                                </pre>
+                                            </TabsContent>
+                                        </div>
+                                    </Tabs>
+                                </motion.div>
+                            ) : (
+                                // Placeholder for visual balance
+                                <div className="h-full rounded-xl border border-dashed border-white/10 bg-white/[0.02] flex items-center justify-center">
+                                    <span className="text-xs text-muted-foreground/30">Output will appear here</span>
+                                </div>
+                            )}
                         </div>
                     </div>
 
                 </div>
             </main>
-            <VideoAssistantWidget onSend={askVideoAssistant} />
         </div>
     );
 }

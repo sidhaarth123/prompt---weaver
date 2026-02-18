@@ -36,7 +36,7 @@ import {
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
-import PromptAssistantWidget from "@/components/PromptAssistantWidget";
+import AssistantTypingIndicator from "@/components/AssistantTypingIndicator";
 
 // --- Constants ---
 
@@ -143,6 +143,10 @@ export default function ImageGenerator() {
     const [framing, setFraming] = useState("");
     const [compositionNotes, setCompositionNotes] = useState("");
 
+    // --- Assistant State ---
+    const [assistantInput, setAssistantInput] = useState("");
+    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'assistant', content: string }[]>([]);
+
     const [rules, setRules] = useState({
         noWatermark: false,
         noExtraText: false,
@@ -152,6 +156,16 @@ export default function ImageGenerator() {
 
     const toggleRule = (key: keyof typeof rules) => {
         setRules(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+
+    const handleAssistantSubmit = async () => {
+        if (!assistantInput.trim()) return;
+
+        const userMsg = assistantInput;
+        setChatHistory(prev => [...prev, { role: 'user', content: userMsg }]);
+        setAssistantInput("");
+
+        await askAssistant(userMsg);
     };
 
     const handleGenerate = async () => {
@@ -326,6 +340,7 @@ export default function ImageGenerator() {
         });
 
         setResult(null);
+        setChatHistory([]);
     };
 
     const copyToClipboard = async (text: string, isJson: boolean) => {
@@ -341,6 +356,7 @@ export default function ImageGenerator() {
     };
 
     async function askAssistant(message: string) {
+        setLoading(true); // START LOADING FOR ASSISTANT
         const form_state = {
             platform: platform ?? "",
             aspect_ratio: aspectRatio ?? "",
@@ -374,108 +390,124 @@ export default function ImageGenerator() {
             }
         };
 
-        const res = await fetch("/api/prompt-assistant", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message, form_state }),
-        });
+        try {
+            const res = await fetch("/api/prompt-assistant", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message, form_state }),
+            });
 
-        const json = await res.json();
-        if (!json?.ok) {
-            console.error("Prompt assistant error:", json?.error || json);
+            const json = await res.json();
+
+            if (!json?.ok) {
+                throw new Error(json?.error || "Failed to generate prompt.");
+            }
+
+            const fill = json?.data?.fill || {};
+            const output = json?.data?.output || {};
+
+            // Add Assistant Response to Chat
+            // We use a predefined nice success message or use something from the API if available. 
+            // The API doesn't return a "message" field usually, just data. 
+            // So we'll synthesize a message.
+            setChatHistory(prev => [...prev, {
+                role: 'assistant',
+                content: "I've updated the settings and generated your prompt!"
+            }]);
+
+            // ✅ Normalize aspect ratio to match your button values exactly
+            const allowedAspectRatios = new Set(["1:1", "4:5", "16:9", "9:16"]);
+            let ar = (fill.aspect_ratio || "").trim();
+            if (!allowedAspectRatios.has(ar)) {
+                const arLower = ar.toLowerCase().replace(/\s+/g, "");
+                if (arLower.includes("1:1") || arLower === "1x1" || arLower === "square") ar = "1:1";
+                else if (arLower.includes("4:5") || arLower === "4x5" || arLower.includes("portrait")) ar = "4:5";
+                else if (arLower.includes("16:9") || arLower === "16x9" || arLower.includes("landscape")) ar = "16:9";
+                else if (arLower.includes("9:16") || arLower === "9x16" || arLower.includes("vertical") || arLower.includes("story")) ar = "9:16";
+            }
+
+            // Helper for fuzzy matching options
+            const matchOption = (val: string, options: string[]) => {
+                if (!val) return "";
+                const v = val.toLowerCase();
+                // Try exact, then partial (either direction)
+                return options.find(o => o.toLowerCase() === v) ||
+                    options.find(o => o.toLowerCase().includes(v) || v.includes(o.toLowerCase())) ||
+                    val;
+            };
+
+            // ✅ Apply fill (only if present)
+            if (fill.platform) setPlatform(matchOption(fill.platform, PLATFORMS));
+            if (ar) setAspectRatio(ar);
+            if (fill.subject_description) setSubject(fill.subject_description);
+            if (fill.art_style) setStyle(matchOption(fill.art_style, STYLES));
+            if (fill.background_scene) setBackground(fill.background_scene);
+            if (fill.lighting) setLighting(matchOption(fill.lighting, LIGHTING_OPTIONS));
+            if (fill.camera_angle) setCamera(matchOption(fill.camera_angle, CAMERA_ANGLES));
+            if (fill.negative_prompt !== undefined) setNegative(fill.negative_prompt);
+
+            // Apply E-com Fill
+            if (fill.ecom) {
+                const e = fill.ecom;
+                if (e.product_name) setProductName(e.product_name);
+                if (e.category) setCategory(matchOption(e.category, PRODUCT_CATEGORIES));
+                if (e.brand_name) setBrandName(e.brand_name);
+                if (e.target_customer) setTargetCustomer(e.target_customer);
+                if (e.benefits) setBenefits(e.benefits);
+                if (e.offer_badge) setOfferBadge(e.offer_badge);
+                if (e.variants) setVariants(e.variants);
+
+                if (e.use_case) setUseCase(matchOption(e.use_case, USE_CASES));
+                if (e.shoot_type) setShootType(matchOption(e.shoot_type, SHOOT_TYPES));
+                if (typeof e.amazon_compliant === 'boolean') setAmazonCompliant(e.amazon_compliant);
+                if (typeof e.text_overlay_enabled === 'boolean') setTextOverlay(e.text_overlay_enabled);
+                if (e.headline_text) setHeadline(e.headline_text);
+                if (e.cta_text) setCta(e.cta_text);
+                if (e.brand_colors) setBrandColors(e.brand_colors);
+                if (e.background_surface) setSurface(matchOption(e.background_surface, BACKGROUND_SURFACES));
+                if (e.props) setProps(e.props);
+                if (e.lighting_mood) setLightingMood(matchOption(e.lighting_mood, LIGHTING_MOODS));
+                if (e.camera_framing) setFraming(matchOption(e.camera_framing, CAMERA_FRAMING));
+                if (e.composition_notes) setCompositionNotes(e.composition_notes);
+
+                if (e.rules) {
+                    setRules(prev => ({
+                        ...prev,
+                        noWatermark: !!e.rules.no_watermark,
+                        noExtraText: !!e.rules.no_extra_text,
+                        noDistortedLogos: !!e.rules.no_distorted_logos,
+                        avoidClaims: !!e.rules.avoid_claims
+                    }));
+                }
+            }
+
+            // Construct the detailed JSON spec
+            const jsonSpec = {
+                prompt: output.prompt || "",
+                negative_prompt: output.negative_prompt || fill.negative_prompt || "",
+                aspect_ratio: output.params?.aspect_ratio || fill.aspect_ratio || "",
+                art_style: output.params?.art_style || fill.art_style || "",
+                lighting: output.params?.lighting || fill.lighting || "",
+                camera_angle: output.params?.camera_angle || fill.camera_angle || ""
+            };
+
+            // ✅ Apply Output Preview (map to your existing output states)
+            if (output.prompt !== undefined) {
+                setResult({
+                    text: output.prompt,
+                    json: JSON.stringify(jsonSpec, null, 2)
+                });
+            }
+
+        } catch (error: any) {
+            console.error("Prompt assistant error:", error);
             toast({
                 title: "Assistant Error",
-                description: json?.error || "Failed to generate prompt.",
+                description: error.message || "Failed to generate prompt.",
                 variant: "destructive",
             });
-            return;
-        }
-
-        const fill = json?.data?.fill || {};
-        const output = json?.data?.output || {};
-
-        // ✅ Normalize aspect ratio to match your button values exactly
-        const allowedAspectRatios = new Set(["1:1", "4:5", "16:9", "9:16"]);
-        let ar = (fill.aspect_ratio || "").trim();
-        if (!allowedAspectRatios.has(ar)) {
-            const arLower = ar.toLowerCase().replace(/\s+/g, "");
-            if (arLower.includes("1:1") || arLower === "1x1" || arLower === "square") ar = "1:1";
-            else if (arLower.includes("4:5") || arLower === "4x5" || arLower.includes("portrait")) ar = "4:5";
-            else if (arLower.includes("16:9") || arLower === "16x9" || arLower.includes("landscape")) ar = "16:9";
-            else if (arLower.includes("9:16") || arLower === "9x16" || arLower.includes("vertical") || arLower.includes("story")) ar = "9:16";
-        }
-
-        // Helper for fuzzy matching options
-        const matchOption = (val: string, options: string[]) => {
-            if (!val) return "";
-            const v = val.toLowerCase();
-            // Try exact, then partial (either direction)
-            return options.find(o => o.toLowerCase() === v) ||
-                options.find(o => o.toLowerCase().includes(v) || v.includes(o.toLowerCase())) ||
-                val;
-        };
-
-        // ✅ Apply fill (only if present)
-        if (fill.platform) setPlatform(matchOption(fill.platform, PLATFORMS));
-        if (ar) setAspectRatio(ar);
-        if (fill.subject_description) setSubject(fill.subject_description);
-        if (fill.art_style) setStyle(matchOption(fill.art_style, STYLES));
-        if (fill.background_scene) setBackground(fill.background_scene);
-        if (fill.lighting) setLighting(matchOption(fill.lighting, LIGHTING_OPTIONS));
-        if (fill.camera_angle) setCamera(matchOption(fill.camera_angle, CAMERA_ANGLES));
-        if (fill.negative_prompt !== undefined) setNegative(fill.negative_prompt);
-
-        // Apply E-com Fill
-        if (fill.ecom) {
-            const e = fill.ecom;
-            if (e.product_name) setProductName(e.product_name);
-            if (e.category) setCategory(matchOption(e.category, PRODUCT_CATEGORIES));
-            if (e.brand_name) setBrandName(e.brand_name);
-            if (e.target_customer) setTargetCustomer(e.target_customer);
-            if (e.benefits) setBenefits(e.benefits);
-            if (e.offer_badge) setOfferBadge(e.offer_badge);
-            if (e.variants) setVariants(e.variants);
-
-            if (e.use_case) setUseCase(matchOption(e.use_case, USE_CASES));
-            if (e.shoot_type) setShootType(matchOption(e.shoot_type, SHOOT_TYPES));
-            if (typeof e.amazon_compliant === 'boolean') setAmazonCompliant(e.amazon_compliant);
-            if (typeof e.text_overlay_enabled === 'boolean') setTextOverlay(e.text_overlay_enabled);
-            if (e.headline_text) setHeadline(e.headline_text);
-            if (e.cta_text) setCta(e.cta_text);
-            if (e.brand_colors) setBrandColors(e.brand_colors);
-            if (e.background_surface) setSurface(matchOption(e.background_surface, BACKGROUND_SURFACES));
-            if (e.props) setProps(e.props);
-            if (e.lighting_mood) setLightingMood(matchOption(e.lighting_mood, LIGHTING_MOODS));
-            if (e.camera_framing) setFraming(matchOption(e.camera_framing, CAMERA_FRAMING));
-            if (e.composition_notes) setCompositionNotes(e.composition_notes);
-
-            if (e.rules) {
-                setRules(prev => ({
-                    ...prev,
-                    noWatermark: !!e.rules.no_watermark,
-                    noExtraText: !!e.rules.no_extra_text,
-                    noDistortedLogos: !!e.rules.no_distorted_logos,
-                    avoidClaims: !!e.rules.avoid_claims
-                }));
-            }
-        }
-
-        // Construct the detailed JSON spec
-        const jsonSpec = {
-            prompt: output.prompt || "",
-            negative_prompt: output.negative_prompt || fill.negative_prompt || "",
-            aspect_ratio: output.params?.aspect_ratio || fill.aspect_ratio || "",
-            art_style: output.params?.art_style || fill.art_style || "",
-            lighting: output.params?.lighting || fill.lighting || "",
-            camera_angle: output.params?.camera_angle || fill.camera_angle || ""
-        };
-
-        // ✅ Apply Output Preview (map to your existing output states)
-        if (output.prompt !== undefined) {
-            setResult({
-                text: output.prompt,
-                json: JSON.stringify(jsonSpec, null, 2)
-            });
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -511,6 +543,18 @@ export default function ImageGenerator() {
                         </div>
 
                         <div className="h-px w-full bg-border/40" />
+
+                        {/* MANUAL CONTROLS HEADER */}
+                        <div className="flex items-center justify-between pb-2">
+                            <div>
+                                <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                                    Manual Controls (Optional)
+                                </h3>
+                                <p className="text-xs text-muted-foreground/60 mt-0.5">
+                                    You can edit fields manually or let the Assistant handle everything.
+                                </p>
+                            </div>
+                        </div>
 
                         {/* SECTION 1: CONTEXT */}
                         <section className={cn(THEME.glassCard, "p-6 space-y-6 hover:border-primary/20 transition-colors duration-500")}>
@@ -825,135 +869,168 @@ export default function ImageGenerator() {
                             </div>
                         </section>
 
-                        {/* ACTIONS */}
-                        <div className="flex gap-4 pt-4 sticky bottom-6 z-20">
-                            <Button
-                                variant="outline"
-                                onClick={handleClear}
-                                className="h-12 px-6 border-white/10 bg-background/50 backdrop-blur-md hover:bg-white/10 hover:text-destructive transition-colors rounded-xl"
-                            >
-                                <Trash2 className="w-4 h-4 mr-2" /> Clear
-                            </Button>
-                            <Button
-                                onClick={handleGenerate}
-                                disabled={loading}
-                                className={cn("flex-1 h-12 text-base font-semibold rounded-xl shadow-lg shadow-primary/20 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 transition-all hover:scale-[1.02]")}
-                            >
-                                {loading ? (
-                                    <>
-                                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Generating Prompt...
-                                    </>
-                                ) : (
-                                    <>
-                                        <ImageIcon className="w-4 h-4 mr-2" /> Generate Image Prompt
-                                    </>
-                                )}
-                            </Button>
-                        </div>
+
+                        {/* ACTIONS - REMOVED VISIBLE BUTTON, LOGIC REMAINS */}
+                        {/* <div className="flex gap-4 pt-4 sticky bottom-6 z-20"> ... </div> */}
+
                     </div>
 
-                    {/* RIGHT: OUTPUTS (Sticky) */}
-                    <div className="lg:sticky lg:top-24 space-y-4 h-fit animate-in fade-in slide-in-from-right-4 duration-700 delay-100">
-                        <div className="flex items-center justify-between px-1">
-                            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                <Code2 className="w-4 h-4" /> Output Preview
-                            </h2>
-                            {result && (
-                                <span className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-md animate-pulse">
-                                    Ready
-                                </span>
-                            )}
+                    {/* RIGHT: AI ASSISTANT PANEL */}
+                    <div className="lg:sticky lg:top-24 h-[calc(100vh-120px)] flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-700 delay-100">
+
+                        {/* 1. ASSISTANT HEADER & INPUT */}
+                        <div className={cn(THEME.glassCard, "p-5 space-y-4 border-primary/20 shadow-2xl relative overflow-hidden group")}>
+                            {/* Glow Effect */}
+                            <div className="absolute top-0 right-0 p-20 bg-primary/10 blur-[80px] rounded-full pointer-events-none group-hover:bg-primary/20 transition-all duration-1000" />
+
+                            <div className="flex items-center justify-between relative z-10">
+                                <div>
+                                    <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70 flex items-center gap-2">
+                                        <Sparkles className="w-5 h-5 text-purple-400 fill-purple-400/20" />
+                                        Prompt Weaver Assistant
+                                    </h2>
+                                    <p className="text-xs text-purple-300/80 font-medium mt-1">
+                                        Auto-fill fields and generate premium e-commerce prompts
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Online</span>
+                                </div>
+                            </div>
+
+                            {/* CHIPS */}
+                            <div className="flex flex-wrap gap-2 relative z-10">
+                                {["Amazon packshot", "Lifestyle skincare", "Minimal studio", "Neon luxury", "Bold product ad"].map((chip) => (
+                                    <button
+                                        key={chip}
+                                        onClick={() => setAssistantInput(chip)}
+                                        className="text-[10px] px-2.5 py-1 rounded-full bg-white/5 border border-white/5 hover:bg-primary/20 hover:border-primary/30 hover:text-primary transition-all cursor-pointer"
+                                    >
+                                        {chip}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* INPUT AREA */}
+                            <div className="relative z-10 group/input">
+                                <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-xl opacity-20 group-hover/input:opacity-40 transition duration-500 blur-sm" />
+                                <div className="relative bg-[#0F0F12] rounded-xl p-1">
+                                    <Textarea
+                                        placeholder="Describe your product image... e.g. Luxury skincare serum for Instagram Story 9:16"
+                                        value={assistantInput}
+                                        onChange={(e) => setAssistantInput(e.target.value)}
+                                        className="min-h-[80px] w-full resize-none border-0 bg-transparent p-3 text-sm focus-visible:ring-0 placeholder:text-muted-foreground/50"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault();
+                                                handleAssistantSubmit();
+                                            }
+                                        }}
+                                        autoFocus
+                                    />
+                                    <div className="flex justify-between items-center px-2 pb-2">
+                                        <span className="text-[10px] text-muted-foreground/60 pl-2">Press Enter to generate</span>
+                                        <Button
+                                            size="sm"
+                                            onClick={handleAssistantSubmit}
+                                            disabled={loading || !assistantInput.trim()}
+                                            className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-500/20 border-0 h-8 px-4 rounded-lg font-medium text-xs transition-all hover:scale-105 active:scale-95"
+                                        >
+                                            {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}
+                                            Auto-Fill & Generate
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="min-h-[600px]">
-                            <AnimatePresence mode="wait">
-                                {result ? (
-                                    <motion.div
-                                        key="result"
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.98 }}
-                                        className={cn(THEME.glassCard, "overflow-hidden flex flex-col shadow-2xl border-primary/20")}
-                                    >
-                                        <Tabs defaultValue="text" className="w-full flex-1 flex flex-col">
-                                            <div className="border-b border-white/5 bg-background/40 px-3 pb-0 pt-3 backdrop-blur-sm">
-                                                <TabsList className="w-full bg-transparent border-b-0 p-0 h-auto gap-1">
-                                                    <TabsTrigger
-                                                        value="text"
-                                                        className="flex-1 rounded-t-lg rounded-b-none border border-transparent border-b-0 py-2.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/20 transition-all font-medium text-xs uppercase tracking-wide"
-                                                    >
-                                                        Prompt
-                                                    </TabsTrigger>
-                                                    <TabsTrigger
-                                                        value="json"
-                                                        className="flex-1 rounded-t-lg rounded-b-none border border-transparent border-b-0 py-2.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/20 transition-all font-medium text-xs uppercase tracking-wide"
-                                                    >
-                                                        JSON Spec
-                                                    </TabsTrigger>
-                                                </TabsList>
-                                            </div>
+                        {/* 2. CHAT HISTORY (Middle) */}
+                        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 px-1 min-h-[100px]">
+                            {chatHistory.length === 0 && !result && (
+                                <div className="h-full flex flex-col items-center justify-center text-center p-8 opacity-40">
+                                    <Sparkles className="w-12 h-12 mb-4 text-primary/50" />
+                                    <p className="text-sm font-medium">Assistant ready.</p>
+                                    <p className="text-xs">Type a request above to start.</p>
+                                </div>
+                            )}
+                            {chatHistory.map((msg, idx) => (
+                                <motion.div
+                                    key={idx}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className={cn(
+                                        "flex w-full mb-4",
+                                        msg.role === 'user' ? "justify-end" : "justify-start"
+                                    )}
+                                >
+                                    <div className={cn(
+                                        "max-w-[85%] rounded-2xl p-3 text-sm shadow-md backdrop-blur-md",
+                                        msg.role === 'user'
+                                            ? "bg-primary/20 text-white rounded-tr-sm border border-primary/20"
+                                            : "bg-muted/40 text-foreground/90 rounded-tl-sm border border-white/5"
+                                    )}>
+                                        {msg.content}
+                                    </div>
+                                </motion.div>
+                            ))}
+                            {loading && <AssistantTypingIndicator />}
+                        </div>
 
-                                            <div className="relative flex-1 bg-[#09090b]">
-                                                <TabsContent value="text" className="m-0 h-full">
-                                                    <div className="relative h-full text-area-wrapper group">
-                                                        <Button
-                                                            variant="secondary"
-                                                            size="icon"
-                                                            onClick={() => copyToClipboard(result.text, false)}
-                                                            className="absolute top-4 right-4 h-9 w-9 bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-white z-10 transition-all opacity-0 group-hover:opacity-100"
-                                                        >
-                                                            {copiedText ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                                                        </Button>
-                                                        <Textarea
-                                                            value={result.text}
-                                                            readOnly
-                                                            className="h-full min-h-[500px] w-full resize-none border-0 bg-transparent p-6 font-mono text-sm leading-relaxed text-slate-300 focus-visible:ring-0 selection:bg-primary/30"
-                                                            style={{ fontFamily: '"Geist Mono", monospace' }}
-                                                        />
-                                                    </div>
-                                                </TabsContent>
+                        {/* 3. OUTPUT RESULT (Bottom) */}
+                        <div className="shrink-0 min-h-[300px] max-h-[50%] flex flex-col">
+                            {result ? (
+                                <motion.div
+                                    key="result"
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.98 }}
+                                    className={cn(THEME.glassCard, "flex-1 overflow-hidden flex flex-col shadow-2xl border-primary/20 rounded-xl relative")}
+                                >
+                                    {/* Soft Glow Border */}
+                                    <div className="absolute inset-0 border border-primary/20 rounded-xl pointer-events-none z-20" />
 
-                                                <TabsContent value="json" className="m-0 h-full">
-                                                    <div className="relative h-full group">
-                                                        <Button
-                                                            variant="secondary"
-                                                            size="icon"
-                                                            onClick={() => copyToClipboard(result.json, true)}
-                                                            className="absolute top-4 right-4 h-9 w-9 bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-white z-10 transition-all opacity-0 group-hover:opacity-100"
-                                                        >
-                                                            {copiedJson ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                                                        </Button>
-                                                        <pre className="h-full min-h-[500px] w-full overflow-auto p-6 text-xs text-xs font-mono text-emerald-400 leading-relaxed custom-scrollbar">
-                                                            {result.json}
-                                                        </pre>
-                                                    </div>
-                                                </TabsContent>
+                                    <Tabs defaultValue="text" className="w-full flex-1 flex flex-col">
+                                        <div className="border-b border-white/5 bg-background/40 px-3 py-2 backdrop-blur-sm flex justify-between items-center">
+                                            <TabsList className="bg-transparent border-0 p-0 h-auto gap-2">
+                                                <TabsTrigger value="text" className="data-[state=active]:bg-primary/20 h-7 text-[10px] px-3 rounded-full">PROMPT</TabsTrigger>
+                                                <TabsTrigger value="json" className="data-[state=active]:bg-primary/20 h-7 text-[10px] px-3 rounded-full">JSON SPEC</TabsTrigger>
+                                            </TabsList>
+                                            <div className="flex gap-2">
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => copyToClipboard(result.text, false)}>
+                                                    <Copy className="w-3.5 h-3.5" />
+                                                </Button>
                                             </div>
-                                        </Tabs>
-                                    </motion.div>
-                                ) : (
-                                    <motion.div
-                                        key="empty"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        className="h-full flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-12 text-center min-h-[500px]"
-                                    >
-                                        <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary/20 to-pink-500/20 flex items-center justify-center mb-6 ring-1 ring-white/10 animate-pulse">
-                                            <ImageIcon className="h-10 w-10 text-primary/80" />
                                         </div>
-                                        <h3 className="text-xl font-bold text-foreground">Awaiting Input</h3>
-                                        <p className="text-sm text-muted-foreground max-w-[260px] mt-3 leading-relaxed">
-                                            Describe your image idea on the left to generate detailed Midjourney or DALL-E prompts.
-                                        </p>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+
+                                        <div className="relative flex-1 bg-[#09090b]">
+                                            <TabsContent value="text" className="m-0 h-full">
+                                                <Textarea
+                                                    value={result.text}
+                                                    readOnly
+                                                    className="h-full w-full resize-none border-0 bg-transparent p-4 font-mono text-xs leading-relaxed text-slate-300 focus-visible:ring-0"
+                                                    style={{ fontFamily: '"Geist Mono", monospace' }}
+                                                />
+                                            </TabsContent>
+                                            <TabsContent value="json" className="m-0 h-full">
+                                                <pre className="h-full w-full overflow-auto p-4 text-[10px] font-mono text-emerald-400 leading-relaxed custom-scrollbar">
+                                                    {result.json}
+                                                </pre>
+                                            </TabsContent>
+                                        </div>
+                                    </Tabs>
+                                </motion.div>
+                            ) : (
+                                // Placeholder for visual balance
+                                <div className="h-full rounded-xl border border-dashed border-white/10 bg-white/[0.02] flex items-center justify-center">
+                                    <span className="text-xs text-muted-foreground/30">Output will appear here</span>
+                                </div>
+                            )}
                         </div>
                     </div>
 
                 </div>
             </main>
-            <PromptAssistantWidget onSend={askAssistant} />
         </div>
     );
 }

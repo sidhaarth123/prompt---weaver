@@ -78,3 +78,58 @@
     box-shadow: 0 0 40px -10px hsl(263 70% 58% / 0.4);
   }
 }
+
+/* Assistant Typing Indicator */
+.assistant-typing {
+  display: flex;
+  margin-top: 12px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.assistant-bubble {
+  background: rgba(120, 80, 255, 0.15);
+  border: 1px solid rgba(120, 80, 255, 0.4);
+  backdrop-filter: blur(12px);
+  padding: 14px 18px;
+  border-radius: 18px;
+  color: #e6d9ff;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 0 20px rgba(140, 90, 255, 0.25);
+}
+
+.dots {
+  display: flex;
+  align-items: center;
+}
+
+.dots span {
+  width: 6px;
+  height: 6px;
+  margin: 0 3px;
+  background: #b388ff;
+  border-radius: 50%;
+  display: inline-block;
+  animation: blink 1.4s infinite both;
+}
+
+.dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes blink {
+  0% { opacity: 0.2; transform: scale(0.8); }
+  20% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0.2; transform: scale(0.8); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
