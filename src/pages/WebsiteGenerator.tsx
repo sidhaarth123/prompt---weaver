@@ -30,7 +30,7 @@ import {
     TrendingUp
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-import WebsiteAssistantWidget from "@/components/WebsiteAssistantWidget";
+import AssistantTypingIndicator from "@/components/AssistantTypingIndicator";
 
 // --- Constants ---
 
@@ -178,6 +178,8 @@ export default function WebsiteGenerator() {
     const [copiedJson, setCopiedJson] = useState(false);
 
     // --- State ---
+    const [assistantInput, setAssistantInput] = useState("");
+    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'assistant', content: string }[]>([]);
 
     // Core Identity
     const [brandName, setBrandName] = useState("");
@@ -800,7 +802,14 @@ export default function WebsiteGenerator() {
                             </div>
                         </section>
 
-                        {/* ACTIONS */}
+                        <div className="h-px w-full bg-border/40" />
+
+                        <div className="flex items-center justify-between pb-2">
+                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Manual Blueprint Controls (Optional)</h3>
+                            <span className="text-xs text-muted-foreground/60 italic">The assistant can auto-fill everything</span>
+                        </div>
+
+                        {/* ACTIONS - HIDDEN GENERATE BUTTON */}
                         <div className="flex gap-4 pt-4 sticky bottom-6 z-20">
                             <Button
                                 variant="outline"
@@ -809,126 +818,187 @@ export default function WebsiteGenerator() {
                             >
                                 <Trash2 className="w-4 h-4 mr-2" /> Clear
                             </Button>
-                            <Button
-                                onClick={handleGenerate}
-                                disabled={loading}
-                                className={cn("flex-1 h-12 text-base font-semibold rounded-xl shadow-lg shadow-primary/20 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 transition-all hover:scale-[1.02]")}
-                            >
-                                {loading ? (
-                                    <>
-                                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Generating Blueprint...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Lightbulb className="w-4 h-4 mr-2 fill-current" /> Generate Blueprint
-                                    </>
-                                )}
-                            </Button>
+                            {/* Hidden but logic preserved */}
+                            {/* <Button onClick={handleGenerate} ...> ... </Button> */}
                         </div>
                     </div>
 
-                    {/* RIGHT: OUTPUTS (Sticky) */}
-                    <div className="lg:sticky lg:top-24 space-y-4 h-fit animate-in fade-in slide-in-from-right-4 duration-700 delay-100">
-                        <div className="flex items-center justify-between px-1">
-                            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                <Code2 className="w-4 h-4" /> Output Preview
-                            </h2>
-                            {result && (
-                                <span className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-md animate-pulse">
-                                    Ready
-                                </span>
+                    {/* RIGHT: WEBSITE BLUEPRINT ASSISTANT PANEL */}
+                    <div className="lg:sticky lg:top-24 h-[calc(100vh-120px)] min-h-[600px] flex flex-col animate-in fade-in slide-in-from-right-4 duration-700 delay-100">
+
+                        {/* 1. ASSISTANT HEADER & INPUT */}
+                        <div className={cn(THEME.glassCard, "p-5 space-y-4 border-primary/20 shadow-2xl relative overflow-hidden group mb-4")}>
+                            {/* Glow Effect */}
+                            <div className="absolute top-0 right-0 p-20 bg-primary/10 blur-[80px] rounded-full pointer-events-none group-hover:bg-primary/20 transition-all duration-1000" />
+
+                            <div className="flex items-center justify-between relative z-10">
+                                <div>
+                                    <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70 flex items-center gap-2">
+                                        <Sparkles className="w-5 h-5 text-blue-400 fill-blue-400/20" />
+                                        Website Blueprint Assistant
+                                    </h2>
+                                    <p className="text-xs text-blue-300/80 font-medium mt-1">
+                                        E-commerce Conversion Architect
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Online</span>
+                                </div>
+                            </div>
+
+                            {/* CHIPS */}
+                            <div className="flex flex-wrap gap-2 relative z-10">
+                                {["DTC Brand Homepage", "High-converting Shopify store", "SaaS landing with pricing", "E-commerce funnel page", "Product-focused landing page"].map((chip) => (
+                                    <button
+                                        key={chip}
+                                        onClick={() => setAssistantInput(chip)}
+                                        className="text-[10px] px-2.5 py-1 rounded-full bg-white/5 border border-white/5 hover:bg-primary/20 hover:border-primary/30 hover:text-primary transition-all cursor-pointer"
+                                    >
+                                        {chip}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* INPUT AREA */}
+                            <div className="relative z-10 group/input">
+                                <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl opacity-20 group-hover/input:opacity-40 transition duration-500 blur-sm" />
+                                <div className="relative bg-[#0F0F12] rounded-xl p-1">
+                                    <Textarea
+                                        placeholder="Describe your website vision... e.g. Premium DTC skincare brand, focus on subscriptions, hero + testimonials + CTA."
+                                        value={assistantInput}
+                                        onChange={(e) => setAssistantInput(e.target.value)}
+                                        className="min-h-[80px] w-full resize-none border-0 bg-transparent p-3 text-sm focus-visible:ring-0 placeholder:text-muted-foreground/50"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault();
+                                                handleAssistantSubmit();
+                                            }
+                                        }}
+                                        autoFocus
+                                    />
+                                    <div className="flex justify-between items-center px-2 pb-2">
+                                        <span className="text-[10px] text-muted-foreground/60 pl-2">Press Enter to generate</span>
+                                        <Button
+                                            size="sm"
+                                            onClick={handleAssistantSubmit}
+                                            disabled={loading || !assistantInput.trim()}
+                                            className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white shadow-lg shadow-blue-500/20 border-0 h-8 px-4 rounded-lg font-medium text-xs transition-all hover:scale-105 active:scale-95"
+                                        >
+                                            {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}
+                                            Auto-Fill & Generate Blueprint
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 2. CHAT HISTORY (Middle) */}
+                        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 p-5 mb-4 rounded-2xl bg-white/[0.03] border border-blue-500/10 shadow-[inset_0_0_24px_rgba(60,130,255,0.05)] flex flex-col">
+                            {chatHistory.length === 0 && !result && (
+                                <div className="flex-1 flex flex-col items-center justify-center text-center p-8 opacity-75">
+                                    <LayoutTemplate className="w-14 h-14 mb-5 text-blue-500/60 animate-pulse" />
+                                    <p className="text-base font-semibold mb-1">Architect Ready</p>
+                                    <p className="text-sm text-muted-foreground">Describe your website to begin.</p>
+                                </div>
+                            )}
+                            {chatHistory.map((msg, idx) => (
+                                <motion.div
+                                    key={idx}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className={cn(
+                                        "flex w-full mb-2",
+                                        msg.role === 'user' ? "justify-end" : "justify-start"
+                                    )}
+                                >
+                                    <div className={cn(
+                                        "max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-md backdrop-blur-md leading-relaxed",
+                                        msg.role === 'user'
+                                            ? "bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white rounded-tr-sm border border-blue-400/20 shadow-[0_0_15px_rgba(50,100,255,0.15)]"
+                                            : "bg-black/40 text-foreground/90 rounded-tl-sm border border-blue-500/20 shadow-[0_0_15px_rgba(50,100,255,0.05)]"
+                                    )}>
+                                        {msg.content}
+                                    </div>
+                                </motion.div>
+                            ))}
+                            {loading && <AssistantTypingIndicator />}
+                        </div>
+
+                        {/* DIVIDER */}
+                        <div className="border-t border-white/10 pb-4" />
+
+                        {/* 3. OUTPUT RESULT (Bottom) */}
+                        <div className="shrink-0 min-h-[300px] max-h-[45%] flex flex-col">
+                            {result ? (
+                                <motion.div
+                                    key="result"
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.98 }}
+                                    className={cn(THEME.glassCard, "flex-1 overflow-hidden flex flex-col shadow-2xl border-primary/20 rounded-xl relative")}
+                                >
+                                    {/* Soft Glow Border */}
+                                    <div className="absolute inset-0 border border-primary/20 rounded-xl pointer-events-none z-20" />
+
+                                    <Tabs defaultValue="text" className="w-full flex-1 flex flex-col">
+                                        <div className="border-b border-white/5 bg-background/40 px-3 py-2 backdrop-blur-sm flex justify-between items-center">
+                                            <TabsList className="bg-transparent border-0 p-0 h-auto gap-2">
+                                                <TabsTrigger value="text" className="data-[state=active]:bg-primary/20 h-7 text-[10px] px-3 rounded-full">PROMPT</TabsTrigger>
+                                                <TabsTrigger value="json" className="data-[state=active]:bg-primary/20 h-7 text-[10px] px-3 rounded-full">JSON SPEC</TabsTrigger>
+                                            </TabsList>
+                                            <div className="flex gap-2">
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => copyToClipboard(result.text, false)}>
+                                                    <Copy className="w-3.5 h-3.5" />
+                                                </Button>
+                                            </div>
+                                        </div>
+
+                                        <div className="relative flex-1 bg-[#09090b]">
+                                            <TabsContent value="text" className="m-0 h-full">
+                                                <Textarea
+                                                    value={result.text}
+                                                    readOnly
+                                                    className="h-full w-full resize-none border-0 bg-transparent p-4 font-mono text-xs leading-relaxed text-slate-300 focus-visible:ring-0"
+                                                    style={{ fontFamily: '"Geist Mono", monospace' }}
+                                                />
+                                            </TabsContent>
+                                            <TabsContent value="json" className="m-0 h-full">
+                                                <pre className="h-full w-full overflow-auto p-4 text-[10px] font-mono text-emerald-400 leading-relaxed custom-scrollbar">
+                                                    {result.json}
+                                                </pre>
+                                            </TabsContent>
+                                        </div>
+                                    </Tabs>
+                                </motion.div>
+                            ) : (
+                                // Placeholder for visual balance
+                                <div className="h-full rounded-xl border border-dashed border-white/10 bg-white/[0.02] flex items-center justify-center">
+                                    <span className="text-xs text-muted-foreground/30">Output will appear here</span>
+                                </div>
                             )}
                         </div>
-
-                        <div className="min-h-[600px]">
-                            <AnimatePresence mode="wait">
-                                {result ? (
-                                    <motion.div
-                                        key="result"
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.98 }}
-                                        className={cn(THEME.glassCard, "overflow-hidden flex flex-col shadow-2xl border-primary/20")}
-                                    >
-                                        <Tabs defaultValue="text" className="w-full flex-1 flex flex-col">
-                                            <div className="border-b border-white/5 bg-background/40 px-3 pb-0 pt-3 backdrop-blur-sm">
-                                                <TabsList className="w-full bg-transparent border-b-0 p-0 h-auto gap-1">
-                                                    <TabsTrigger
-                                                        value="text"
-                                                        className="flex-1 rounded-t-lg rounded-b-none border border-transparent border-b-0 py-2.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/20 transition-all font-medium text-xs uppercase tracking-wide"
-                                                    >
-                                                        Prompt
-                                                    </TabsTrigger>
-                                                    <TabsTrigger
-                                                        value="json"
-                                                        className="flex-1 rounded-t-lg rounded-b-none border border-transparent border-b-0 py-2.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/20 transition-all font-medium text-xs uppercase tracking-wide"
-                                                    >
-                                                        JSON Spec
-                                                    </TabsTrigger>
-                                                </TabsList>
-                                            </div>
-
-                                            <div className="relative flex-1 bg-[#09090b]">
-                                                <TabsContent value="text" className="m-0 h-full">
-                                                    <div className="relative h-full text-area-wrapper group">
-                                                        <Button
-                                                            variant="secondary"
-                                                            size="icon"
-                                                            onClick={() => copyToClipboard(result.text, false)}
-                                                            className="absolute top-4 right-4 h-9 w-9 bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-white z-10 transition-all opacity-0 group-hover:opacity-100"
-                                                        >
-                                                            {copiedText ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                                                        </Button>
-                                                        <Textarea
-                                                            value={result.text}
-                                                            readOnly
-                                                            className="h-full min-h-[500px] w-full resize-none border-0 bg-transparent p-6 font-mono text-sm leading-relaxed text-slate-300 focus-visible:ring-0 selection:bg-primary/30"
-                                                            style={{ fontFamily: '"Geist Mono", monospace' }}
-                                                        />
-                                                    </div>
-                                                </TabsContent>
-
-                                                <TabsContent value="json" className="m-0 h-full">
-                                                    <div className="relative h-full group">
-                                                        <Button
-                                                            variant="secondary"
-                                                            size="icon"
-                                                            onClick={() => copyToClipboard(result.json, true)}
-                                                            className="absolute top-4 right-4 h-9 w-9 bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-white z-10 transition-all opacity-0 group-hover:opacity-100"
-                                                        >
-                                                            {copiedJson ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                                                        </Button>
-                                                        <pre className="h-full min-h-[500px] w-full overflow-auto p-6 text-xs text-xs font-mono text-emerald-400 leading-relaxed custom-scrollbar">
-                                                            {result.json}
-                                                        </pre>
-                                                    </div>
-                                                </TabsContent>
-                                            </div>
-                                        </Tabs>
-                                    </motion.div>
-                                ) : (
-                                    <motion.div
-                                        key="empty"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        className="h-full flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-12 text-center min-h-[500px]"
-                                    >
-                                        <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary/20 to-purple-500/20 flex items-center justify-center mb-6 ring-1 ring-white/10 animate-pulse">
-                                            <LayoutTemplate className="h-10 w-10 text-primary/80" />
-                                        </div>
-                                        <h3 className="text-xl font-bold text-foreground">Awaiting Blueprint</h3>
-                                        <p className="text-sm text-muted-foreground max-w-[260px] mt-3 leading-relaxed">
-                                            Define your business model and strategy to generate a professional e-commerce architecture.
-                                        </p>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
                     </div>
-
                 </div>
-            </main>
-            <WebsiteAssistantWidget onSend={askWebsiteAssistant} />
-        </div>
+            </main >
+        </div >
     );
+
+    async function handleAssistantSubmit() {
+        if (!assistantInput.trim() || loading) return;
+
+        const input = assistantInput;
+        setAssistantInput("");
+        setLoading(true);
+        setChatHistory(prev => [...prev, { role: 'user', content: input }]);
+
+        try {
+            await askWebsiteAssistant(input);
+            setChatHistory(prev => [...prev, { role: 'assistant', content: "Blueprint generated! I've filled in the details and created your prompt structure." }]);
+        } catch (error) {
+            setChatHistory(prev => [...prev, { role: 'assistant', content: "Sorry, I encountered an issue generating the layout. Please try again." }]);
+        } finally {
+            setLoading(false);
+        }
+    }
 }

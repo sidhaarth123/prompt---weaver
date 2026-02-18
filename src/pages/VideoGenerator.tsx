@@ -937,10 +937,10 @@ export default function VideoGenerator() {
                     </div>
 
                     {/* RIGHT: VIDEO PERFORMANCE ASSISTANT PANEL */}
-                    <div className="lg:sticky lg:top-24 h-[calc(100vh-120px)] flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-700 delay-100">
+                    <div className="lg:sticky lg:top-24 h-[calc(100vh-120px)] min-h-[600px] flex flex-col animate-in fade-in slide-in-from-right-4 duration-700 delay-100">
 
                         {/* 1. ASSISTANT HEADER & INPUT */}
-                        <div className={cn(THEME.glassCard, "p-5 space-y-4 border-primary/20 shadow-2xl relative overflow-hidden group")}>
+                        <div className={cn(THEME.glassCard, "p-5 space-y-4 border-primary/20 shadow-2xl relative overflow-hidden group mb-4")}>
                             {/* Glow Effect */}
                             <div className="absolute top-0 right-0 p-20 bg-primary/10 blur-[80px] rounded-full pointer-events-none group-hover:bg-primary/20 transition-all duration-1000" />
 
@@ -1007,12 +1007,12 @@ export default function VideoGenerator() {
                         </div>
 
                         {/* 2. CHAT HISTORY (Middle) */}
-                        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 px-1 min-h-[100px]">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 p-5 mb-4 rounded-2xl bg-white/[0.03] border border-orange-500/10 shadow-[inset_0_0_24px_rgba(255,90,60,0.05)] flex flex-col">
                             {chatHistory.length === 0 && !result && (
-                                <div className="h-full flex flex-col items-center justify-center text-center p-8 opacity-40">
-                                    <Clapperboard className="w-12 h-12 mb-4 text-primary/50" />
-                                    <p className="text-sm font-medium">Video Director ready.</p>
-                                    <p className="text-xs">Type a concept above to start.</p>
+                                <div className="flex-1 flex flex-col items-center justify-center text-center p-8 opacity-75">
+                                    <Clapperboard className="w-14 h-14 mb-5 text-orange-500/60 animate-pulse" />
+                                    <p className="text-base font-semibold mb-1">Video Assistant Ready</p>
+                                    <p className="text-sm text-muted-foreground">Describe your ad above to auto-fill + generate.</p>
                                 </div>
                             )}
                             {chatHistory.map((msg, idx) => (
@@ -1021,15 +1021,15 @@ export default function VideoGenerator() {
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     className={cn(
-                                        "flex w-full mb-4",
+                                        "flex w-full mb-2",
                                         msg.role === 'user' ? "justify-end" : "justify-start"
                                     )}
                                 >
                                     <div className={cn(
-                                        "max-w-[85%] rounded-2xl p-3 text-sm shadow-md backdrop-blur-md",
+                                        "max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-md backdrop-blur-md leading-relaxed",
                                         msg.role === 'user'
-                                            ? "bg-primary/20 text-white rounded-tr-sm border border-primary/20"
-                                            : "bg-muted/40 text-foreground/90 rounded-tl-sm border border-white/5"
+                                            ? "bg-gradient-to-br from-orange-500 via-red-500 to-red-600 text-white rounded-tr-sm border border-orange-400/20 shadow-[0_0_15px_rgba(255,100,0,0.15)]"
+                                            : "bg-black/40 text-foreground/90 rounded-tl-sm border border-orange-500/20 shadow-[0_0_15px_rgba(255,140,0,0.05)]"
                                     )}>
                                         {msg.content}
                                     </div>
@@ -1038,8 +1038,11 @@ export default function VideoGenerator() {
                             {loading && <AssistantTypingIndicator />}
                         </div>
 
+                        {/* DIVIDER */}
+                        <div className="border-t border-white/10 pb-4" />
+
                         {/* 3. OUTPUT RESULT (Bottom) */}
-                        <div className="shrink-0 min-h-[300px] max-h-[50%] flex flex-col">
+                        <div className="shrink-0 min-h-[300px] max-h-[45%] flex flex-col">
                             {result ? (
                                 <motion.div
                                     key="result"

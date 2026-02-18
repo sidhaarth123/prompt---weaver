@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,12 @@ import {
     Layout,
     Type,
     Palette,
-    ShieldCheck
+    ShieldCheck,
+    Bot,
+    Send,
+    Zap,
+    MessageSquare,
+    ShoppingBag
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -101,6 +106,19 @@ const BACKGROUNDS = [
     "Bokeh"
 ];
 
+const ASSISTANT_SUGGESTIONS = [
+    "Luxury Skincare Sale Banner",
+    "Black Friday Offer",
+    "New Product Launch",
+    "Limited Time Offer",
+    "High-Converting Hero Banner"
+];
+
+type Message = {
+    role: "user" | "assistant";
+    content: string;
+};
+
 export default function BannerGenerator() {
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<{ text: string; json: string } | null>(null);
@@ -135,8 +153,91 @@ export default function BannerGenerator() {
     const [noDistortedLogos, setNoDistortedLogos] = useState(true);
     const [avoidMisleading, setAvoidMisleading] = useState(true);
 
-    const handleGenerate = async () => {
-        if (!brandName || !productName || !category) {
+    // Assistant Status
+    const [assistantInput, setAssistantInput] = useState("");
+    const [isThinking, setIsThinking] = useState(false);
+    const [chatHistory, setChatHistory] = useState<Message[]>([]);
+    const chatEndRef = useRef<HTMLDivElement>(null);
+
+    // Scroll to bottom of chat
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [chatHistory, isThinking]);
+
+    // --- Logic ---
+
+    // Helper: Build Prompt String
+    const buildPrompt = (cfg: any) => {
+        return `Design a high-converting e-commerce banner.
+            
+CONTEXT:
+Brand: ${cfg.brandName}
+Product: ${cfg.productName} (${cfg.category})
+Target Audience: ${cfg.targetAudience}
+Main Message: "${cfg.primaryMessage}"
+Offer: ${cfg.offer}
+CTA Button: ${cfg.cta}
+
+FORMAT & TECH:
+Placement: ${cfg.placement}
+Size: ${cfg.sizePreset}
+Safe Area Enforced: ${cfg.safeArea ? "YES" : "NO"}
+
+AESTHETIC:
+Style: ${cfg.style}
+Background: ${cfg.backgroundType}
+Brand Colors: ${cfg.brandColors}
+Props/Elements: ${cfg.props}
+
+QUALITY GUIDELINES:
+- Typography: Ensure high readability, hierarchy with Headline > Subhead > CTA.
+- Layout: Balanced composition, negative space for text overlay.
+- E-commerce Focus: Product should be focal point, high contrast CTA.
+${cfg.noWatermark ? "- No watermarks" : ""}
+${cfg.noArtifacts ? "- No text artifacts" : ""}
+${cfg.noDistortedLogos ? "- No distorted logos" : ""}
+${cfg.avoidMisleading ? "- Authentic product representation" : ""}
+`;
+    };
+
+    const buildJson = (cfg: any) => {
+        return {
+            brand_name: cfg.brandName,
+            product_name: cfg.productName,
+            category: cfg.category,
+            target_audience: cfg.targetAudience,
+            offer: cfg.offer,
+            cta: cfg.cta,
+            primary_message: cfg.primaryMessage,
+            placement: cfg.placement,
+            size_preset: cfg.sizePreset,
+            safe_area: cfg.safeArea,
+            style: cfg.style,
+            background_type: cfg.backgroundType,
+            brand_colors: cfg.brandColors,
+            props: cfg.props,
+            rules: {
+                no_watermark: cfg.noWatermark,
+                no_artifacts: cfg.noArtifacts,
+                no_distorted_logos: cfg.noDistortedLogos,
+                avoid_misleading: cfg.avoidMisleading
+            }
+        };
+    };
+
+    const handleGenerate = async (overrides?: any) => {
+        // Current state configuration
+        const currentConfig = {
+            brandName, productName, category, targetAudience, offer, cta, primaryMessage,
+            placement, sizePreset, safeArea,
+            style, backgroundType, brandColors, props,
+            noWatermark, noArtifacts, noDistortedLogos, avoidMisleading
+        };
+
+        const config = { ...currentConfig, ...overrides };
+
+        // Fallback checks (only if manual/no overrides, though assistant might pass empty overrides)
+        if (!overrides && !config.brandName && !config.productName && !config.category) {
             toast({
                 title: "Missing fields",
                 description: "Please fill in Brand Name, Product Name, and Category.",
@@ -148,61 +249,10 @@ export default function BannerGenerator() {
         setLoading(true);
         setResult(null);
 
-        // Simulate generation delay for effect
+        // Simulate generation delay
         setTimeout(() => {
-            const prompt = `Design a high-converting e-commerce banner.
-            
-CONTEXT:
-Brand: ${brandName}
-Product: ${productName} (${category})
-Target Audience: ${targetAudience}
-Main Message: "${primaryMessage}"
-Offer: ${offer}
-CTA Button: ${cta}
-
-FORMAT & TECH:
-Placement: ${placement}
-Size: ${sizePreset}
-Safe Area Enforced: ${safeArea ? "YES" : "NO"}
-
-AESTHETIC:
-Style: ${style}
-Background: ${backgroundType}
-Brand Colors: ${brandColors}
-Props/Elements: ${props}
-
-QUALITY GUIDELINES:
-- Typography: Ensure high readability, hierarchy with Headline > Subhead > CTA.
-- Layout: Balanced composition, negative space for text overlay.
-- E-commerce Focus: Product should be focal point, high contrast CTA.
-${noWatermark ? "- No watermarks" : ""}
-${noArtifacts ? "- No text artifacts" : ""}
-${noDistortedLogos ? "- No distorted logos" : ""}
-${avoidMisleading ? "- Authentic product representation" : ""}
-`;
-
-            const jsonSpec = {
-                brand_name: brandName,
-                product_name: productName,
-                category: category,
-                target_audience: targetAudience,
-                offer: offer,
-                cta: cta,
-                primary_message: primaryMessage,
-                placement: placement,
-                size_preset: sizePreset,
-                safe_area: safeArea,
-                style: style,
-                background_type: backgroundType,
-                brand_colors: brandColors,
-                props: props,
-                rules: {
-                    no_watermark: noWatermark,
-                    no_artifacts: noArtifacts,
-                    no_distorted_logos: noDistortedLogos,
-                    avoid_misleading: avoidMisleading
-                }
-            };
+            const prompt = buildPrompt(config);
+            const jsonSpec = buildJson(config);
 
             setResult({
                 text: prompt,
@@ -229,6 +279,7 @@ ${avoidMisleading ? "- Authentic product representation" : ""}
         setBrandColors("");
         setProps("");
         setResult(null);
+        setChatHistory([]);
     };
 
     const copyToClipboard = async (text: string, isJson: boolean) => {
@@ -243,6 +294,95 @@ ${avoidMisleading ? "- Authentic product representation" : ""}
         toast({ title: "Copied to clipboard" });
     };
 
+    // --- Assistant Logic (Client-Side Heuristic) ---
+    const handleAssistantSubmit = async () => {
+        if (!assistantInput.trim()) return;
+
+        const userInput = assistantInput.trim();
+        setAssistantInput("");
+        setChatHistory(prev => [...prev, { role: "user", content: userInput }]);
+        setIsThinking(true);
+
+        // Simulate reading/parsing delay
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        // 1. Parse Input (Simple Heuristics)
+        const lower = userInput.toLowerCase();
+
+        // Brand & Product
+        // Naive extraction: assume first few words might be product/brand if not already set? 
+        // Or just map known keywords.
+
+        let overrides: any = {};
+
+        // Category Detection
+        const matchedCategory = CATEGORIES.find(c => lower.includes(c.toLowerCase()));
+        if (matchedCategory) {
+            setCategory(matchedCategory);
+            overrides.category = matchedCategory;
+        }
+
+        // CTA Detection
+        const matchedCTA = CTAS.find(c => lower.includes(c.toLowerCase()));
+        if (matchedCTA) {
+            setCta(matchedCTA);
+            overrides.cta = matchedCTA;
+        }
+
+        // Placement Detection
+        const matchedPlacement = PLACEMENTS.find(p => lower.includes(p.toLowerCase()) || (p.includes("Instagram") && lower.includes("instagram")) || (p.includes("Facebook") && lower.includes("facebook")));
+        if (matchedPlacement) {
+            setPlacement(matchedPlacement);
+            overrides.placement = matchedPlacement;
+        }
+
+        // Style Detection
+        const matchedStyle = STYLES.find(s => lower.includes(s.toLowerCase().split(" ")[0]) || lower.includes("neon") && s.includes("Neon"));
+        if (matchedStyle) {
+            setStyle(matchedStyle);
+            overrides.style = matchedStyle;
+        }
+
+        // Offer Detection
+        if (lower.includes("% off") || lower.includes("sale") || lower.includes("discount")) {
+            let newOffer = "";
+            const percentMatch = lower.match(/(\d+% off)/);
+            if (percentMatch) newOffer = percentMatch[0].toUpperCase();
+            else if (!offer) newOffer = "Special Sale";
+
+            if (newOffer) {
+                setOffer(newOffer);
+                overrides.offer = newOffer;
+            }
+        }
+
+        // Fill gaps if empty (Defaults)
+        if (!brandName) {
+            const def = "YourBrand";
+            setBrandName(def);
+            overrides.brandName = def;
+        }
+        if (!productName) {
+            const def = "Premium Product";
+            setProductName(def);
+            overrides.productName = def;
+        }
+        if (!primaryMessage) {
+            setPrimaryMessage(userInput);
+            overrides.primaryMessage = userInput;
+        }
+
+        // 2. Trigger Generation
+        handleGenerate(overrides);
+
+        // 3. Assistant Response
+        setIsThinking(false);
+        setChatHistory(prev => [...prev, {
+            role: "assistant",
+            content: "I've analyzed your request and auto-filled the banner configuration. The prompt is ready below!"
+        }]);
+    };
+
     return (
         <div className="min-h-screen bg-background font-sans selection:bg-primary/20">
             <Navbar />
@@ -254,52 +394,35 @@ ${avoidMisleading ? "- Authentic product representation" : ""}
             </div>
 
             <main className="container relative z-10 mx-auto px-4 pt-24 pb-20">
-                <div className="grid lg:grid-cols-[1fr,480px] gap-8 items-start">
+                <div className="grid lg:grid-cols-[480px,1fr] xl:grid-cols-[480px,1fr] gap-8 items-start h-full">
 
-                    {/* LEFT: INPUTS */}
-                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    {/* LEFT PANEL: MANUAL CONTROLS */}
+                    <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-700 h-full overflow-y-auto pb-20">
                         {/* Header */}
                         <div className="mb-2">
-                            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 mb-4 backdrop-blur-md">
-                                <Sparkles className="w-3.5 h-3.5 text-primary" />
-                                <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-                                    Ad Creative
-                                </span>
-                            </div>
-                            <h1 className="text-4xl font-bold tracking-tight mb-3">
-                                <span className={THEME.gradientText}>Banner Prompt Generator</span>
-                            </h1>
-                            <p className="text-muted-foreground text-lg max-w-2xl leading-relaxed">
-                                Create high-converting e-commerce banner prompts for Midjourney, SDXL, and other AI tools.
-                            </p>
+                            <h2 className="text-xl font-semibold text-foreground/80 flex items-center gap-2 mb-4">
+                                <Layout className="w-5 h-5 text-primary" />
+                                Banner Controls <span className="text-sm font-normal text-muted-foreground">(Manual)</span>
+                            </h2>
                         </div>
 
-                        <div className="h-px w-full bg-border/40" />
-
-                        {/* SECTION A: BRIEF */}
-                        <section className={cn(THEME.glassCard, "p-6 space-y-6 hover:border-primary/20 transition-colors duration-500")}>
-                            <div className="flex items-center gap-3 mb-2">
+                        {/* Card 1: Brand & Offer */}
+                        <div className="p-5 rounded-[18px] border border-white/[0.08] bg-white/[0.02] shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300">
+                            <div className="flex items-center gap-3 mb-4">
                                 <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
-                                    <CreditCard className="w-5 h-5" />
+                                    <ShoppingBag className="w-4 h-4" />
                                 </div>
-                                <div>
-                                    <h3 className="font-semibold text-lg">Banner Brief</h3>
-                                    <p className="text-xs text-muted-foreground">Core details about the product and offer.</p>
-                                </div>
+                                <h3 className="font-semibold text-base">Brand & Offer</h3>
                             </div>
 
-                            <div className="grid sm:grid-cols-2 gap-5">
+                            <div className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Brand Name</Label>
-                                    <Input placeholder="e.g. GlowUp" value={brandName} onChange={e => setBrandName(e.target.value)} className="bg-background/40 border-white/10" />
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Brand / Product</Label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <Input placeholder="Brand Name" value={brandName} onChange={e => setBrandName(e.target.value)} className="bg-background/40 border-white/10" />
+                                        <Input placeholder="Product Name" value={productName} onChange={e => setProductName(e.target.value)} className="bg-background/40 border-white/10" />
+                                    </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Product Name</Label>
-                                    <Input placeholder="e.g. Vit-C Serum" value={productName} onChange={e => setProductName(e.target.value)} className="bg-background/40 border-white/10" />
-                                </div>
-                            </div>
-
-                            <div className="grid sm:grid-cols-2 gap-5">
                                 <div className="space-y-2">
                                     <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Category</Label>
                                     <Select value={category} onValueChange={setCategory}>
@@ -308,268 +431,276 @@ ${avoidMisleading ? "- Authentic product representation" : ""}
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Target Audience</Label>
-                                    <Input placeholder="e.g. Gen Z Women" value={targetAudience} onChange={e => setTargetAudience(e.target.value)} className="bg-background/40 border-white/10" />
-                                </div>
-                            </div>
-
-                            <div className="grid sm:grid-cols-2 gap-5">
-                                <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Offer / Discount</Label>
-                                    <Input placeholder="e.g. 20% OFF" value={offer} onChange={e => setOffer(e.target.value)} className="bg-background/40 border-white/10" />
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Offer Details</Label>
+                                    <Input placeholder="e.g. 20% OFF, Summer Sale" value={offer} onChange={e => setOffer(e.target.value)} className="bg-background/40 border-white/10" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">CTA Button</Label>
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Call to Action (CTA)</Label>
                                     <Select value={cta} onValueChange={setCta}>
                                         <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
                                         <SelectContent>{CTAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                                     </Select>
                                 </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Primary Message (Headline)</Label>
-                                <Textarea
-                                    placeholder="e.g. Summer Glow Essentials. Get radiant skin in 1 week."
-                                    value={primaryMessage}
-                                    onChange={e => setPrimaryMessage(e.target.value)}
-                                    className="bg-background/40 border-white/10 min-h-[80px]"
-                                />
-                            </div>
-                        </section>
-
-                        {/* SECTION B: FORMAT */}
-                        <section className={cn(THEME.glassCard, "p-6 space-y-6 hover:border-primary/20 transition-colors duration-500")}>
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 rounded-lg bg-orange-500/10 text-orange-400">
-                                    <Monitor className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold text-lg">Placement & Size</h3>
-                                    <p className="text-xs text-muted-foreground">Where will this banner live?</p>
-                                </div>
-                            </div>
-
-                            <div className="grid sm:grid-cols-2 gap-5">
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Placement</Label>
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Target Audience</Label>
+                                    <Input placeholder="e.g. Gen Z, Professionals" value={targetAudience} onChange={e => setTargetAudience(e.target.value)} className="bg-background/40 border-white/10" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Card 2: Placement */}
+                        <div className="p-5 rounded-[18px] border border-white/[0.08] bg-white/[0.02] shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2 rounded-lg bg-orange-500/10 text-orange-400">
+                                    <Monitor className="w-4 h-4" />
+                                </div>
+                                <h3 className="font-semibold text-base">Banner Placement</h3>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Platform</Label>
                                     <Select value={placement} onValueChange={setPlacement}>
                                         <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
                                         <SelectContent>{PLACEMENTS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Size Preset</Label>
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Dimensions</Label>
                                     <Select value={sizePreset} onValueChange={setSizePreset}>
                                         <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
                                         <SelectContent>{SIZES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                                     </Select>
                                 </div>
+                                <div className="flex items-center gap-2 pt-1">
+                                    <Checkbox id="safeArea" checked={safeArea} onCheckedChange={(c) => setSafeArea(c === true)} className="border-white/20 data-[state=checked]:bg-primary" />
+                                    <Label htmlFor="safeArea" className="text-xs font-medium cursor-pointer text-muted-foreground">Enforce Safe Area (Padding)</Label>
+                                </div>
                             </div>
+                        </div>
 
-                            <div className="flex items-center gap-2 pt-2">
-                                <Checkbox id="safeArea" checked={safeArea} onCheckedChange={(c) => setSafeArea(c === true)} className="border-white/20 data-[state=checked]:bg-primary" />
-                                <Label htmlFor="safeArea" className="text-sm font-medium cursor-pointer">Enforce Safe Area (Padding)</Label>
-                            </div>
-                        </section>
-
-                        {/* SECTION C: VISUAL STYLE */}
-                        <section className={cn(THEME.glassCard, "p-6 space-y-6 hover:border-primary/20 transition-colors duration-500")}>
-                            <div className="flex items-center gap-3 mb-2">
+                        {/* Card 3: Visuals */}
+                        <div className="p-5 rounded-[18px] border border-white/[0.08] bg-white/[0.02] shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300">
+                            <div className="flex items-center gap-3 mb-4">
                                 <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400">
-                                    <Palette className="w-5 h-5" />
+                                    <Palette className="w-4 h-4" />
                                 </div>
-                                <div>
-                                    <h3 className="font-semibold text-lg">Creative Direction</h3>
-                                    <p className="text-xs text-muted-foreground">Style, vibe, and colors.</p>
-                                </div>
+                                <h3 className="font-semibold text-base">Visual Direction</h3>
                             </div>
 
-                            <div className="grid sm:grid-cols-2 gap-5">
+                            <div className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Visual Style</Label>
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Style Aesthetic</Label>
                                     <Select value={style} onValueChange={setStyle}>
                                         <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
                                         <SelectContent>{STYLES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Background</Label>
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Background Type</Label>
                                     <Select value={backgroundType} onValueChange={setBackgroundType}>
                                         <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
                                         <SelectContent>{BACKGROUNDS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
                                     </Select>
                                 </div>
-                            </div>
-
-                            <div className="grid sm:grid-cols-2 gap-5">
                                 <div className="space-y-2">
                                     <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Brand Colors</Label>
-                                    <Input placeholder="e.g. #FF5733, Teal, White" value={brandColors} onChange={e => setBrandColors(e.target.value)} className="bg-background/40 border-white/10" />
+                                    <Input placeholder="e.g. Modern Pink, Black, Gold" value={brandColors} onChange={e => setBrandColors(e.target.value)} className="bg-background/40 border-white/10" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Props / Elements</Label>
-                                    <Input placeholder="e.g. Tropical leaves, podium, water splash" value={props} onChange={e => setProps(e.target.value)} className="bg-background/40 border-white/10" />
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Props / Mood</Label>
+                                    <Input placeholder="e.g. Podium, Neon, Tropical Leaves" value={props} onChange={e => setProps(e.target.value)} className="bg-background/40 border-white/10" />
                                 </div>
                             </div>
-                        </section>
+                        </div>
 
-                        {/* SECTION D: COMPLIANCE */}
-                        <section className={cn(THEME.glassCard, "p-6 space-y-4 hover:border-primary/20 transition-colors duration-500")}>
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 rounded-lg bg-red-500/10 text-red-400">
-                                    <ShieldCheck className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold text-lg">Compliance</h3>
-                                    <p className="text-xs text-muted-foreground">Quality control filters.</p>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
+                        {/* Card 4: Compliance (Condensed) */}
+                        <div className="p-5 rounded-[18px] border border-white/[0.08] bg-white/[0.02] shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300">
+                            <h3 className="font-semibold text-sm mb-3 text-muted-foreground">Quality Check</h3>
+                            <div className="grid grid-cols-2 gap-3">
                                 <div className="flex items-center gap-2">
                                     <Checkbox id="fw1" checked={noWatermark} onCheckedChange={(c) => setNoWatermark(c === true)} className="border-white/20" />
-                                    <Label htmlFor="fw1" className="text-sm font-medium cursor-pointer">No Watermarks</Label>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Checkbox id="fw2" checked={noArtifacts} onCheckedChange={(c) => setNoArtifacts(c === true)} className="border-white/20" />
-                                    <Label htmlFor="fw2" className="text-sm font-medium cursor-pointer">Clean Text (No Artifacts)</Label>
+                                    <Label htmlFor="fw1" className="text-xs font-medium cursor-pointer text-muted-foreground">No Watermarks</Label>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Checkbox id="fw3" checked={noDistortedLogos} onCheckedChange={(c) => setNoDistortedLogos(c === true)} className="border-white/20" />
-                                    <Label htmlFor="fw3" className="text-sm font-medium cursor-pointer">No Distorted Logos</Label>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Checkbox id="fw4" checked={avoidMisleading} onCheckedChange={(c) => setAvoidMisleading(c === true)} className="border-white/20" />
-                                    <Label htmlFor="fw4" className="text-sm font-medium cursor-pointer">Authentic Representation</Label>
+                                    <Label htmlFor="fw3" className="text-xs font-medium cursor-pointer text-muted-foreground">No Distorted Logos</Label>
                                 </div>
                             </div>
-                        </section>
-
-                        {/* ACTIONS */}
-                        <div className="flex gap-4 pt-4 sticky bottom-6 z-20">
-                            <Button
-                                variant="outline"
-                                onClick={handleClear}
-                                className="h-12 px-6 border-white/10 bg-background/50 backdrop-blur-md hover:bg-white/10 hover:text-destructive transition-colors rounded-xl"
-                            >
-                                <Trash2 className="w-4 h-4 mr-2" /> Clear
-                            </Button>
-                            <Button
-                                onClick={handleGenerate}
-                                disabled={loading}
-                                className={cn("flex-1 h-12 text-base font-semibold rounded-xl shadow-lg shadow-primary/20 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 transition-all hover:scale-[1.02]")}
-                            >
-                                {loading ? (
-                                    <>
-                                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Generating...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Lightbulb className="w-4 h-4 mr-2 fill-current" /> Generate Banner Prompt
-                                    </>
-                                )}
-                            </Button>
                         </div>
+
+                        <Button
+                            variant="outline"
+                            onClick={handleClear}
+                            className="w-full border-white/10 bg-background/50 backdrop-blur-md hover:bg-white/10 hover:text-destructive transition-colors rounded-xl h-10"
+                        >
+                            <Trash2 className="w-4 h-4 mr-2" /> Reset Form
+                        </Button>
                     </div>
 
-                    {/* RIGHT: OUTPUTS (Sticky) */}
-                    <div className="lg:sticky lg:top-24 space-y-4 h-fit animate-in fade-in slide-in-from-right-4 duration-700 delay-100">
-                        <div className="flex items-center justify-between px-1">
-                            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                <Code2 className="w-4 h-4" /> Output Preview
-                            </h2>
-                            {result && (
-                                <span className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-md animate-pulse">
-                                    Ready
-                                </span>
-                            )}
+                    {/* RIGHT PANEL: ASSISTANT */}
+                    <div className="flex flex-col h-full space-y-6 animate-in fade-in slide-in-from-right-4 duration-700 min-h-[85vh]">
+                        {/* 1) Assistant Header & Input */}
+                        <div className="flex flex-col space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+                                        Banner Performance Assistant <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                    </h1>
+                                    <p className="text-muted-foreground text-sm font-medium">
+                                        E-commerce Conversion Architect
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-1 text-xs text-green-400 bg-green-500/10 px-2 py-1 rounded-full border border-green-500/20">
+                                    <Bot className="w-3.5 h-3.5" />
+                                    <span>Online</span>
+                                </div>
+                            </div>
+
+                            {/* Input Area */}
+                            <div className={cn(THEME.glassCard, "p-1 rounded-[16px] shadow-lg border-primary/20 bg-background/50 backdrop-blur-md focus-within:ring-2 focus-within:ring-primary/30 transition-all")}>
+                                <div className="relative">
+                                    <Textarea
+                                        placeholder="Describe your banner... e.g. Luxury skincare launch banner, 20% OFF, Instagram Story 9:16, neon premium style."
+                                        value={assistantInput}
+                                        onChange={e => setAssistantInput(e.target.value)}
+                                        className="w-full min-h-[100px] bg-transparent border-0 resize-none text-base p-4 focus-visible:ring-0 placeholder:text-muted-foreground/50"
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" && !e.shiftKey) {
+                                                e.preventDefault();
+                                                handleAssistantSubmit();
+                                            }
+                                        }}
+                                    />
+                                    <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                                        <Button
+                                            size="sm"
+                                            onClick={handleAssistantSubmit}
+                                            disabled={loading || isThinking || !assistantInput.trim()}
+                                            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg hover:shadow-primary/25 transition-all"
+                                        >
+                                            <Sparkles className="w-3.5 h-3.5 mr-2" />
+                                            Auto-Fill & Generate
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Chips */}
+                            <div className="flex flex-wrap gap-2">
+                                {ASSISTANT_SUGGESTIONS.map((chip, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => setAssistantInput(chip)}
+                                        className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-muted-foreground hover:bg-primary/10 hover:border-primary/30 hover:text-primary transition-all flex items-center gap-1.5"
+                                    >
+                                        <Zap className="w-3 h-3" />
+                                        {chip}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
 
-                        <div className="min-h-[600px]">
-                            <AnimatePresence mode="wait">
-                                {result ? (
-                                    <motion.div
-                                        key="result"
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.98 }}
-                                        className={cn(THEME.glassCard, "overflow-hidden flex flex-col shadow-2xl border-primary/20")}
-                                    >
-                                        <Tabs defaultValue="text" className="w-full flex-1 flex flex-col">
-                                            <div className="border-b border-white/5 bg-background/40 px-3 pb-0 pt-3 backdrop-blur-sm">
-                                                <TabsList className="w-full bg-transparent border-b-0 p-0 h-auto gap-1">
-                                                    <TabsTrigger
-                                                        value="text"
-                                                        className="flex-1 rounded-t-lg rounded-b-none border border-transparent border-b-0 py-2.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/20 transition-all font-medium text-xs uppercase tracking-wide"
-                                                    >
-                                                        Prompt
-                                                    </TabsTrigger>
-                                                    <TabsTrigger
-                                                        value="json"
-                                                        className="flex-1 rounded-t-lg rounded-b-none border border-transparent border-b-0 py-2.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/20 transition-all font-medium text-xs uppercase tracking-wide"
-                                                    >
-                                                        JSON Spec
-                                                    </TabsTrigger>
-                                                </TabsList>
-                                            </div>
+                        {/* 2) Conversation Area */}
+                        <div className="flex-1 min-h-[450px] relative rounded-[16px] border border-white/[0.08] bg-white/[0.03] overflow-hidden flex flex-col shadow-inner">
+                            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/20 pointer-events-none" />
 
-                                            <div className="relative flex-1 bg-[#09090b]">
-                                                <TabsContent value="text" className="m-0 h-full">
-                                                    <div className="relative h-full text-area-wrapper group">
-                                                        <Button
-                                                            variant="secondary"
-                                                            size="icon"
-                                                            onClick={() => copyToClipboard(result.text, false)}
-                                                            className="absolute top-4 right-4 h-9 w-9 bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-white z-10 transition-all opacity-0 group-hover:opacity-100"
-                                                        >
-                                                            {copiedText ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                                                        </Button>
-                                                        <Textarea
-                                                            value={result.text}
-                                                            readOnly
-                                                            className="h-full min-h-[500px] w-full resize-none border-0 bg-transparent p-6 font-mono text-sm leading-relaxed text-slate-300 focus-visible:ring-0 selection:bg-primary/30"
-                                                            style={{ fontFamily: '"Geist Mono", monospace' }}
-                                                        />
-                                                    </div>
-                                                </TabsContent>
-
-                                                <TabsContent value="json" className="m-0 h-full">
-                                                    <div className="relative h-full group">
-                                                        <Button
-                                                            variant="secondary"
-                                                            size="icon"
-                                                            onClick={() => copyToClipboard(result.json, true)}
-                                                            className="absolute top-4 right-4 h-9 w-9 bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-white z-10 transition-all opacity-0 group-hover:opacity-100"
-                                                        >
-                                                            {copiedJson ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                                                        </Button>
-                                                        <pre className="h-full min-h-[500px] w-full overflow-auto p-6 text-xs text-xs font-mono text-emerald-400 leading-relaxed custom-scrollbar">
-                                                            {result.json}
-                                                        </pre>
-                                                    </div>
-                                                </TabsContent>
-                                            </div>
-                                        </Tabs>
-                                    </motion.div>
+                            <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+                                {chatHistory.length === 0 ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground/50 space-y-3">
+                                        <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center">
+                                            <MessageSquare className="w-6 h-6" />
+                                        </div>
+                                        <p className="text-sm">Assistant ready.</p>
+                                        <p className="text-xs">Describe your banner above to start.</p>
+                                    </div>
                                 ) : (
+                                    chatHistory.map((msg, i) => (
+                                        <motion.div
+                                            key={i}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            className={cn(
+                                                "max-w-[85%] rounded-[18px] p-4 text-sm leading-relaxed shadow-md backdrop-blur-sm",
+                                                msg.role === "user"
+                                                    ? "ml-auto bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-tr-sm"
+                                                    : "mr-auto bg-white/10 border border-white/5 text-slate-200 rounded-tl-sm shadow-[0_0_15px_rgba(0,0,0,0.2)]"
+                                            )}
+                                        >
+                                            {msg.content}
+                                        </motion.div>
+                                    ))
+                                )}
+
+                                {isThinking && (
                                     <motion.div
-                                        key="empty"
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
-                                        className="h-full flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-12 text-center min-h-[500px]"
+                                        className="mr-auto bg-white/5 border border-white/5 px-4 py-3 rounded-[18px] rounded-tl-sm flex items-center gap-2 w-fit"
                                     >
-                                        <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary/20 to-purple-500/20 flex items-center justify-center mb-6 ring-1 ring-white/10 animate-pulse">
-                                            <Layout className="h-10 w-10 text-primary/80" />
+                                        <span className="text-xs text-muted-foreground font-medium">Designing banner</span>
+                                        <div className="flex gap-1">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-[bounce_1s_infinite_0ms]" />
+                                            <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-[bounce_1s_infinite_200ms]" />
+                                            <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-[bounce_1s_infinite_400ms]" />
                                         </div>
-                                        <h3 className="text-xl font-bold text-foreground">Awaiting Ad Banner</h3>
-                                        <p className="text-sm text-muted-foreground max-w-[260px] mt-3 leading-relaxed">
-                                            Define your product, offer, and visuals to generate a high-performing banner prompt.
-                                        </p>
                                     </motion.div>
                                 )}
-                            </AnimatePresence>
+                                <div ref={chatEndRef} />
+                            </div>
                         </div>
+
+                        {/* 3) Output Section */}
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
+                            <div className="flex items-center justify-between mb-2 px-1">
+                                <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                    <Code2 className="w-4 h-4" /> Generated Output
+                                </h2>
+                                {result && (
+                                    <Button variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground hover:text-white" onClick={() => copyToClipboard(result.text, false)}>
+                                        <Copy className="w-3 h-3 mr-1.5" /> Copy Prompt
+                                    </Button>
+                                )}
+                            </div>
+
+                            <div className={cn(THEME.glassCard, "overflow-hidden border-primary/10 shadow-lg min-h-[300px] flex flex-col")}>
+                                <Tabs defaultValue="text" className="w-full h-full flex flex-col">
+                                    <div className="border-b border-white/5 bg-background/20 px-4">
+                                        <TabsList className="bg-transparent border-b-0 p-0 h-10 w-full justify-start gap-4">
+                                            <TabsTrigger
+                                                value="text"
+                                                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 py-2 text-xs uppercase tracking-wide"
+                                            >
+                                                Prompt
+                                            </TabsTrigger>
+                                            <TabsTrigger
+                                                value="json"
+                                                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 py-2 text-xs uppercase tracking-wide"
+                                            >
+                                                JSON Spec
+                                            </TabsTrigger>
+                                        </TabsList>
+                                    </div>
+
+                                    <div className="relative flex-1 bg-black/40 min-h-[300px]">
+                                        <TabsContent value="text" className="m-0 h-full">
+                                            <Textarea
+                                                value={result?.text || ""}
+                                                readOnly
+                                                placeholder="Your generated banner prompt will appear here..."
+                                                className="h-full w-full resize-none border-0 bg-transparent p-6 font-mono text-sm leading-relaxed text-slate-300 focus-visible:ring-0"
+                                            />
+                                        </TabsContent>
+                                        <TabsContent value="json" className="m-0 h-full">
+                                            <pre className="h-full w-full overflow-auto p-6 text-xs font-mono text-emerald-400 leading-relaxed custom-scrollbar bg-transparent">
+                                                {result?.json || ""}
+                                            </pre>
+                                        </TabsContent>
+                                    </div>
+                                </Tabs>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </main>
