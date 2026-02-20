@@ -17,13 +17,13 @@ export default function AuthCallback() {
 
         if (sessionData.session) {
           // Successful login
-          navigate("/generator", { replace: true });
+          navigate("/image-generator", { replace: true });
         } else {
           // No session found immediately, listen for auth state change
           // This handles cases where the session might be established slightly after load
           const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
             if (event === "SIGNED_IN" && session) {
-              navigate("/generator", { replace: true });
+              navigate("/image-generator", { replace: true });
             } else if (event === "SIGNED_OUT") {
               // If we get here and are signed out, potentially redirect to login or show error
               // But typically OAuth redirect should result in SIGNED_IN

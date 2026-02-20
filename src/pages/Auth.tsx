@@ -51,7 +51,7 @@ export default function Auth() {
   const [resendLoading, setResendLoading] = useState(false);
 
   useEffect(() => {
-    if (user) navigate("/generator", { replace: true });
+    if (user) navigate("/image-generator", { replace: true });
   }, [user, navigate]);
 
   useEffect(() => {
@@ -67,12 +67,24 @@ export default function Auth() {
     return emailOk && pwdOk && match;
   }, [signupEmail, signupPassword, signupConfirm]);
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = async (switchAccount = false) => {
     try {
       setOauthLoading(true);
+
+      if (switchAccount) {
+        await supabase.auth.signOut();
+      }
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: `${origin}/auth/callback` },
+        options: {
+          redirectTo: `${origin}/auth/callback`,
+          queryParams: {
+            prompt: "select_account",
+            access_type: "offline",
+            include_granted_scopes: "true",
+          },
+        },
       });
       if (error) {
         toast({
@@ -106,7 +118,7 @@ export default function Auth() {
       return;
     }
 
-    navigate("/generator", { replace: true });
+    navigate("/image-generator", { replace: true });
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -225,7 +237,7 @@ export default function Auth() {
         type="button"
         variant="outline"
         className="w-full h-11 gap-3 bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 transition-all font-medium text-white"
-        onClick={handleGoogleLogin}
+        onClick={() => handleGoogleLogin()}
         disabled={oauthLoading || loading}
       >
         <div className="flex items-center justify-center w-6 h-6 rounded-full bg-white shrink-0">
@@ -239,6 +251,14 @@ export default function Auth() {
         </div>
         {oauthLoading ? "Connecting..." : "Continue with Google"}
       </Button>
+
+      <button
+        type="button"
+        onClick={() => handleGoogleLogin(true)}
+        className="mt-2 text-[11px] text-indigo-400 hover:text-indigo-300 font-medium transition-colors w-full text-center"
+      >
+        Use a different Google account
+      </button>
 
       <div className="my-6 flex items-center gap-3">
         <div className="h-px w-full bg-white/10" />
