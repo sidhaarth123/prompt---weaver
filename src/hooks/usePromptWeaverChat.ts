@@ -45,7 +45,7 @@ export function usePromptWeaverChat({ workflowType, onDataReceived }: UsePromptW
             if (!response.success) {
                 let errorMsg = response.error || "Failed to communicate with AI.";
 
-                if (response.code === 'UNAUTHORIZED') {
+                if (response.code === 'UNAUTHORIZED' || response.error === 'SESSION_EXPIRED') {
                     setErrorStatus('UNAUTHORIZED');
                     errorMsg = "Session expired. Please login again.";
                 } else if (response.code === 'NO_CREDITS') {

@@ -18,12 +18,27 @@ export interface WebhookClientResponse {
 }
 
 /**
+ * Robust fetcher with retry logic for authentication failures.
+ */
+async function executeRequest(url: string, message: string, token: string): Promise<Response> {
+    return await fetch(url, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ message })
+    });
+}
+
+/**
  * Unified webhook client for Prompt Weaver workflows.
- * Optimized for production safety and consistent response structure.
+ * Optimized for production safety, automatic session refresh, and consistent error handling.
  */
 export async function callWorkflowWebhook(
     workflowType: WorkflowType,
-    message: string
+    message: string,
+    isRetry = false
 ): Promise<WebhookClientResponse> {
     try {
         // 1. Get workflow config
@@ -38,70 +53,61 @@ export async function callWorkflowWebhook(
 
         // 2. Validate Webhook URL presence
         if (!config.webhookUrl) {
-            console.error(`Webhook URL for ${workflowType} is missing.`);
             return {
                 success: false,
-                error: `Assistant configuration missing for ${config.title}. Please check environment variables.`,
+                error: `Configuration error for ${config.title}.`,
                 code: "CONFIG_MISSING"
             };
         }
 
-        // 3. Get Supabase session safely
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        // 3. Get latest session token
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-        if (sessionError) {
+        if (sessionError || !session?.access_token) {
             return {
                 success: false,
-                error: "Authentication error. Please login again.",
+                error: "SESSION_EXPIRED",
                 code: "UNAUTHORIZED"
             };
         }
 
-        const token = sessionData?.session?.access_token;
-        if (!token) {
-            return {
-                success: false,
-                error: "Please login to use the Assistant.",
-                code: "UNAUTHORIZED"
-            };
+        const token = session.access_token;
+
+        // 4. Primary Request Execution
+        let response = await executeRequest(config.webhookUrl, message, token);
+
+        // 5. Handle Authentication Failure (Retry Logic)
+        if (response.status === 401 && !isRetry) {
+            // Attempt to refresh session once
+            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+
+            if (!refreshError && refreshData.session?.access_token) {
+                // Retry with new token
+                return await callWorkflowWebhook(workflowType, message, true);
+            } else {
+                return {
+                    success: false,
+                    error: "SESSION_EXPIRED",
+                    code: "UNAUTHORIZED"
+                };
+            }
         }
 
-        // 4. Execute POST request
-        const response = await fetch(config.webhookUrl, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
-            },
-            body: JSON.stringify({ message })
-        });
-
-        // 5. Handle Status Codes 
+        // 6. Handle other status codes
         if (response.status === 401) {
-            return {
-                success: false,
-                error: "Session expired, please login again.",
-                code: "UNAUTHORIZED"
-            };
-        }
-        if (response.status === 402) {
-            return {
-                success: false,
-                error: "No credits remaining. Please upgrade your plan.",
-                code: "NO_CREDITS"
-            };
+            return { success: false, error: "SESSION_EXPIRED", code: "UNAUTHORIZED" };
         }
 
-        // 6. Parse JSON safely
+        if (response.status === 402) {
+            return { success: false, error: "No credits remaining. Please upgrade.", code: "NO_CREDITS" };
+        }
+
+        // 7. Parse JSON safely
         let resultData;
         try {
             resultData = await response.json();
         } catch (e) {
-            return {
-                success: false,
-                error: "Invalid response from Assistant server.",
-                code: "PARSE_ERROR"
-            };
+            return { success: false, error: "Invalid response from Assistant server.", code: "PARSE_ERROR" };
         }
 
         if (!response.ok) {
@@ -112,8 +118,7 @@ export async function callWorkflowWebhook(
             };
         }
 
-        // 7. Map successful response
-        // We expect the n8n workflow to return the fields directly or wrapped in data
+        // 8. Map successful response
         const data = resultData.data || resultData;
 
         return {
@@ -127,10 +132,10 @@ export async function callWorkflowWebhook(
         };
 
     } catch (error: any) {
-        console.error(`Webhook Call Error (${workflowType}):`, error);
         return {
             success: false,
-            error: error.message || "Something went wrong. Please try again.",
+            error: "NETWORK_ERROR",
+            message: error.message || "Failed to reach server",
             code: "NETWORK_ERROR"
         };
     }
