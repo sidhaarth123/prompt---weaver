@@ -50,9 +50,7 @@ export default function Auth() {
   const [signupSubmittedEmail, setSignupSubmittedEmail] = useState<string | null>(null);
   const [resendLoading, setResendLoading] = useState(false);
 
-  useEffect(() => {
-    if (user) navigate("/image-generator", { replace: true });
-  }, [user, navigate]);
+  // Removed automatic redirect on mount to allow forced account selection
 
   useEffect(() => {
     setActiveTab(defaultTab as any);
@@ -67,13 +65,19 @@ export default function Auth() {
     return emailOk && pwdOk && match;
   }, [signupEmail, signupPassword, signupConfirm]);
 
-  const handleGoogleLogin = async (switchAccount = false) => {
+  const handleGoogleLogin = async () => {
     try {
       setOauthLoading(true);
 
-      if (switchAccount) {
-        await supabase.auth.signOut();
-      }
+      // Force fresh session locally
+      await supabase.auth.signOut({ scope: "local" });
+
+      // Clear Supabase localStorage keys
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('sb-') || key.includes('supabase')) {
+          localStorage.removeItem(key);
+        }
+      });
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -83,9 +87,11 @@ export default function Auth() {
             prompt: "select_account",
             access_type: "offline",
             include_granted_scopes: "true",
+            max_age: "0"
           },
         },
       });
+
       if (error) {
         toast({
           title: "Google sign-in failed",
@@ -233,11 +239,36 @@ export default function Auth() {
 
   const OAuthBlock = () => (
     <>
+      {user && (
+        <div className="mb-6 p-4 rounded-xl border border-indigo-500/30 bg-indigo-500/10 animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-[10px] font-bold">
+                {user.email?.[0].toUpperCase()}
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-white leading-none">Already logged in</span>
+                <span className="text-[10px] text-muted-foreground">{user.email}</span>
+              </div>
+            </div>
+          </div>
+          <Button
+            onClick={() => navigate("/image-generator")}
+            className="w-full h-9 bg-indigo-600 hover:bg-indigo-700 text-xs font-bold"
+          >
+            Continue to Workspace
+          </Button>
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
+            <div className="relative flex justify-center text-[9px] uppercase tracking-widest"><span className="bg-background px-2 text-muted-foreground">Or switch account</span></div>
+          </div>
+        </div>
+      )}
       <Button
         type="button"
         variant="outline"
         className="w-full h-11 gap-3 bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 transition-all font-medium text-white"
-        onClick={() => handleGoogleLogin()}
+        onClick={handleGoogleLogin}
         disabled={oauthLoading || loading}
       >
         <div className="flex items-center justify-center w-6 h-6 rounded-full bg-white shrink-0">
@@ -254,7 +285,7 @@ export default function Auth() {
 
       <button
         type="button"
-        onClick={() => handleGoogleLogin(true)}
+        onClick={handleGoogleLogin}
         className="mt-2 text-[11px] text-indigo-400 hover:text-indigo-300 font-medium transition-colors w-full text-center"
       >
         Use a different Google account
