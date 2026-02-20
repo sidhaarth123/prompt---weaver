@@ -46,6 +46,9 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import AssistantTypingIndicator from "@/components/AssistantTypingIndicator";
+import { callImagePromptWebhook } from "@/api/imagePromptWebhook";
+
+
 
 // --- Constants ---
 
@@ -152,9 +155,17 @@ export default function ImageGenerator() {
     const [framing, setFraming] = useState("");
     const [compositionNotes, setCompositionNotes] = useState("");
 
-    // --- Assistant State ---
     const [assistantInput, setAssistantInput] = useState("");
     const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'assistant', content: string }[]>([]);
+    const [credits, setCredits] = useState<number | null>(null);
+    const [errorType, setErrorType] = useState<'UNAUTHORIZED' | 'NO_CREDITS' | null>(null);
+
+    const [touchedByUser, setTouchedByUser] = useState<Record<string, boolean>>({});
+
+    const setField = (field: string, value: any, setter: (val: any) => void) => {
+        setter(value);
+        setTouchedByUser(prev => ({ ...prev, [field]: true }));
+    };
 
     const [rules, setRules] = useState({
         noWatermark: false,
@@ -165,6 +176,72 @@ export default function ImageGenerator() {
 
     const toggleRule = (key: keyof typeof rules) => {
         setRules(prev => ({ ...prev, [key]: !prev[key] }));
+        setTouchedByUser(prev => ({ ...prev, [`rule_${key}`]: true }));
+    };
+
+    const resetAutofill = () => {
+        setTouchedByUser({});
+        toast({ title: "Autofill flags reset", description: "The assistant can now overwrite all fields again." });
+    };
+
+    const applyAutofill = (final: any) => {
+        const updateIfUnlocked = (field: string, newValue: any, currentValue: any, setter: (val: any) => void) => {
+            if (!touchedByUser[field] || !currentValue) {
+                setter(newValue);
+            }
+        };
+
+        if (final.context_format) {
+            updateIfUnlocked('platform', final.context_format.platform, platform, setPlatform);
+            updateIfUnlocked('aspectRatio', final.context_format.aspect_ratio, aspectRatio, setAspectRatio);
+        }
+
+        if (final.product_brief) {
+            updateIfUnlocked('productName', final.product_brief.product_name, productName, setProductName);
+            updateIfUnlocked('category', final.product_brief.category, category, setCategory);
+            updateIfUnlocked('brandName', final.product_brief.brand_name, brandName, setBrandName);
+            updateIfUnlocked('targetCustomer', final.product_brief.target_customer, targetCustomer, setTargetCustomer);
+            updateIfUnlocked('benefits', final.product_brief.key_benefits_usp, benefits, setBenefits);
+            updateIfUnlocked('offerBadge', final.product_brief.offer_badge, offerBadge, setOfferBadge);
+            updateIfUnlocked('variants', final.product_brief.product_variants, variants, setVariants);
+        }
+
+        if (final.listing_ad_specs) {
+            updateIfUnlocked('useCase', final.listing_ad_specs.use_case, useCase, setUseCase);
+            updateIfUnlocked('shootType', final.listing_ad_specs.shoot_type, shootType, setShootType);
+            updateIfUnlocked('amazonCompliant', final.listing_ad_specs.amazon_compliant_mode, amazonCompliant, setAmazonCompliant);
+            updateIfUnlocked('textOverlay', final.listing_ad_specs.text_overlay, textOverlay, setTextOverlay);
+            updateIfUnlocked('brandColors', final.listing_ad_specs.brand_colors, brandColors, setBrandColors);
+            updateIfUnlocked('surface', final.listing_ad_specs.background_surface, surface, setSurface);
+            updateIfUnlocked('props', final.listing_ad_specs.props, props, setProps);
+            updateIfUnlocked('lightingMood', final.listing_ad_specs.lighting_mood, lightingMood, setLightingMood);
+            updateIfUnlocked('framing', final.listing_ad_specs.camera_framing, framing, setFraming);
+            updateIfUnlocked('compositionNotes', final.listing_ad_specs.composition_notes, compositionNotes, setCompositionNotes);
+            updateIfUnlocked('headline', final.listing_ad_specs.headline_text, headline, setHeadline);
+            updateIfUnlocked('cta', final.listing_ad_specs.cta_text, cta, setCta);
+
+
+            const newRules = { ...rules };
+            let rulesChanged = false;
+            if (!touchedByUser.rule_noWatermark) { newRules.noWatermark = final.listing_ad_specs.no_watermark; rulesChanged = true; }
+            if (!touchedByUser.rule_noExtraText) { newRules.noExtraText = final.listing_ad_specs.no_extra_text; rulesChanged = true; }
+            if (!touchedByUser.rule_noDistortedLogos) { newRules.noDistortedLogos = final.listing_ad_specs.no_distorted_logos; rulesChanged = true; }
+            if (!touchedByUser.rule_avoidClaims) { newRules.avoidClaims = final.listing_ad_specs.avoid_claims; rulesChanged = true; }
+            if (rulesChanged) setRules(newRules);
+        }
+
+        if (final.subject_details) {
+            updateIfUnlocked('subject', final.subject_details.subject_description, subject, setSubject);
+            updateIfUnlocked('style', final.subject_details.art_style, style, setStyle);
+            updateIfUnlocked('background', final.subject_details.background_scene, background, setBackground);
+        }
+
+        if (final.composition) {
+            updateIfUnlocked('lighting', final.composition.lighting, lighting, setLighting);
+            updateIfUnlocked('camera', final.composition.camera_angle, camera, setCamera);
+            updateIfUnlocked('negative', final.composition.negative_prompt, negative, setNegative);
+        }
+
     };
 
     const handleAssistantSubmit = async () => {
@@ -366,112 +443,70 @@ export default function ImageGenerator() {
 
     async function askAssistant(message: string) {
         setLoading(true);
-
-        // 1. Get or Create Session ID
-        let sessionId = localStorage.getItem("pw_session_id");
-        if (!sessionId) {
-            sessionId = crypto.randomUUID();
-            localStorage.setItem("pw_session_id", sessionId);
-        }
-
-        // 2. Gather Current Fields
-        const current_fields = {
-            platform,
-            aspect_ratio: aspectRatio,
-            subject_description: subject,
-            art_style: style,
-            background_scene: background,
-            lighting,
-            camera_angle: camera,
-            negative_prompt: negative,
-            product_name: productName,
-            category,
-            brand_name: brandName,
-            target_customer: targetCustomer,
-            benefits,
-            offer_badge: offerBadge,
-            variants,
-            use_case: useCase,
-            shoot_type: shootType,
-            amazon_compliant: amazonCompliant,
-            text_overlay: textOverlay,
-            headline_text: headline,
-            cta_text: cta,
-            brand_colors: brandColors,
-            background_surface: surface,
-            props,
-            lighting_mood: lightingMood,
-            camera_framing: framing,
-            composition_notes: compositionNotes,
-            rules
-        };
+        setErrorType(null);
 
         try {
-            // 3. Call Vercel API Route
-            const res = await fetch("/api/parse", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    session_id: sessionId,
-                    message,
-                    current_fields
-                }),
-            });
+            const data = await callImagePromptWebhook(message);
 
-            const text = await res.text();
-            let data;
-            try {
-                data = JSON.parse(text);
-            } catch (e) {
-                console.error("Non-JSON response from /api/parse:", text);
-                throw new Error("Server did not return valid JSON. Check console for details.");
+            if (!data.success) {
+                if (data.error === 'UNAUTHORIZED') {
+                    setErrorType('UNAUTHORIZED');
+                    toast({
+                        title: "Session Expired",
+                        description: "Please login again to continue.",
+                        variant: "destructive",
+                    });
+                } else if (data.error === 'NO_CREDITS') {
+                    setErrorType('NO_CREDITS');
+                    toast({
+                        title: "No Credits",
+                        description: "You've run out of credits. Please upgrade to continue.",
+                        variant: "destructive",
+                    });
+                } else {
+                    toast({
+                        title: "Assistant Error",
+                        description: data.message || "Failed to communicate with AI.",
+                        variant: "destructive",
+                    });
+                }
+
+                // Render error in bubble as requested
+                setChatHistory(prev => [...prev, {
+                    role: 'assistant',
+                    content: `⚠️ Error: ${data.message || "Something went wrong. Please try again."}`
+                }]);
+                return;
             }
 
-            if (!res.ok) {
-                throw new Error(data.error || `API Error: ${res.status}`);
+            if (data.remaining_credits !== undefined) {
+                setCredits(data.remaining_credits);
             }
 
-            const { patch, missing_questions } = data;
-
-            // 4. Apply Patch (Merge into existing state)
-            if (patch) {
-                if (patch.platform) setPlatform(patch.platform);
-                if (patch.aspect_ratio) setAspectRatio(patch.aspect_ratio);
-                if (patch.subject_description) setSubject(patch.subject_description);
-                if (patch.art_style) setStyle(patch.art_style);
-                if (patch.background_scene) setBackground(patch.background_scene);
-                if (patch.lighting) setLighting(patch.lighting);
-                if (patch.camera_angle) setCamera(patch.camera_angle);
-                if (patch.negative_prompt) setNegative(patch.negative_prompt);
-
-                // E-com fields
-                if (patch.product_name) setProductName(patch.product_name);
-                if (patch.category) setCategory(patch.category);
-                if (patch.brand_name) setBrandName(patch.brand_name);
-                if (patch.target_customer) setTargetCustomer(patch.target_customer);
-                if (patch.benefits) setBenefits(patch.benefits);
-                if (patch.offer_badge) setOfferBadge(patch.offer_badge);
-                if (patch.variants) setVariants(patch.variants);
-                if (patch.use_case) setUseCase(patch.use_case);
-                if (patch.shoot_type) setShootType(patch.shoot_type);
-                if (patch.amazon_compliant !== undefined) setAmazonCompliant(patch.amazon_compliant);
-                if (patch.text_overlay !== undefined) setTextOverlay(patch.text_overlay);
-                if (patch.headline_text) setHeadline(patch.headline_text);
-                if (patch.cta_text) setCta(patch.cta_text);
-                if (patch.brand_colors) setBrandColors(patch.brand_colors);
-                if (patch.background_surface) setSurface(patch.background_surface);
-                if (patch.props || patch.props_optional) setProps(patch.props || patch.props_optional);
-                if (patch.lighting_mood) setLightingMood(patch.lighting_mood);
-                if (patch.camera_framing) setFraming(patch.camera_framing);
-                if (patch.composition_notes) setCompositionNotes(patch.composition_notes);
+            // 1. Auto-fill fields from response.final
+            if (data.final) {
+                applyAutofill(data.final);
             }
 
-            // 5. Handle Response Message
+            // 2. Handle Chat History & Questions
             let assistantResponse = "";
-            if (missing_questions && missing_questions.length > 0) {
-                assistantResponse = missing_questions.join("\n");
+            if (!data.ready && data.questions && data.questions.length > 0) {
+                assistantResponse = data.questions.join("\n");
+            } else if (data.ready) {
+                assistantResponse = "Excellent! I've prepared your premium prompt package. You can view it below.";
+
+                if (data.prompt_package) {
+                    setResult({
+                        text: data.prompt_package.prompt,
+                        json: JSON.stringify({
+                            prompt: data.prompt_package.prompt,
+                            negative_prompt: data.prompt_package.negative_prompt,
+                            ...data.final
+                        }, null, 2)
+                    });
+                }
             } else {
-                assistantResponse = "I've updated the settings based on your request. Ready to generate?";
+                assistantResponse = "Settings updated. What else would you like to add?";
             }
 
             setChatHistory(prev => [...prev, {
@@ -483,17 +518,18 @@ export default function ImageGenerator() {
             console.error("Assistant Error:", error);
             toast({
                 title: "Assistant Error",
-                description: "Could not connect to the assistant backend. Please try again.",
+                description: "Failed to communicate with AI. Try again.",
                 variant: "destructive",
             });
             setChatHistory(prev => [...prev, {
                 role: 'assistant',
-                content: "Sorry, I'm having trouble connecting to my brain right now. Please try again later."
+                content: "I'm having trouble connecting to my brain. Please try again in a moment."
             }]);
         } finally {
             setLoading(false);
         }
     }
+
 
     return (
         <div className="min-h-screen bg-background font-sans selection:bg-primary/20">
@@ -572,11 +608,11 @@ export default function ImageGenerator() {
                                     <Select
                                         value={platform}
                                         onValueChange={(value) => {
-                                            setPlatform(value);
+                                            setField('platform', value, setPlatform);
                                             // Automatically set aspect ratio based on platform
                                             const defaultAspectRatio = PLATFORM_ASPECT_MAP[value];
                                             if (defaultAspectRatio) {
-                                                setAspectRatio(defaultAspectRatio);
+                                                setField('aspectRatio', defaultAspectRatio, setAspectRatio);
                                             }
                                         }}
                                     >
@@ -596,7 +632,7 @@ export default function ImageGenerator() {
                                         {ASPECT_RATIOS.map((r) => (
                                             <button
                                                 key={r.value}
-                                                onClick={() => setAspectRatio(r.value)}
+                                                onClick={() => setField('aspectRatio', r.value, setAspectRatio)}
                                                 className={cn(
                                                     "flex flex-col items-center justify-center p-2 rounded-lg border transition-all text-xs gap-1",
                                                     aspectRatio === r.value
@@ -613,6 +649,7 @@ export default function ImageGenerator() {
                             </div>
                         </section>
 
+
                         {/* NEW: E-COMMERCE PRODUCT BRIEF */}
                         <section className={cn(THEME.glassCard, "p-6 space-y-6 hover:border-primary/20 transition-colors duration-500")}>
                             <div className="flex items-center gap-3 mb-2">
@@ -628,39 +665,40 @@ export default function ImageGenerator() {
                             <div className="grid sm:grid-cols-2 gap-5">
                                 <div className="space-y-2">
                                     <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Product Name</Label>
-                                    <Input placeholder="e.g. Vitamin C Serum" value={productName} onChange={e => setProductName(e.target.value)} className="bg-background/40 border-white/10" />
+                                    <Input placeholder="e.g. Vitamin C Serum" value={productName} onChange={e => setField('productName', e.target.value, setProductName)} className="bg-background/40 border-white/10" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Category</Label>
-                                    <Select value={category} onValueChange={setCategory}>
+                                    <Select value={category} onValueChange={val => setField('category', val, setCategory)}>
                                         <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
                                         <SelectContent>{PRODUCT_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Brand Name</Label>
-                                    <Input placeholder="e.g. GlowLabs" value={brandName} onChange={e => setBrandName(e.target.value)} className="bg-background/40 border-white/10" />
+                                    <Input placeholder="e.g. GlowLabs" value={brandName} onChange={e => setField('brandName', e.target.value, setBrandName)} className="bg-background/40 border-white/10" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Target Customer</Label>
-                                    <Input placeholder="e.g. Women 20-35" value={targetCustomer} onChange={e => setTargetCustomer(e.target.value)} className="bg-background/40 border-white/10" />
+                                    <Input placeholder="e.g. Women 20-35" value={targetCustomer} onChange={e => setField('targetCustomer', e.target.value, setTargetCustomer)} className="bg-background/40 border-white/10" />
                                 </div>
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Key Benefits / USP</Label>
-                                <Textarea placeholder="e.g. brightens skin, reduces dark spots..." value={benefits} onChange={e => setBenefits(e.target.value)} className="bg-background/40 border-white/10 min-h-[60px]" />
+                                <Textarea placeholder="e.g. brightens skin, reduces dark spots..." value={benefits} onChange={e => setField('benefits', e.target.value, setBenefits)} className="bg-background/40 border-white/10 min-h-[60px]" />
                             </div>
                             <div className="grid sm:grid-cols-2 gap-5">
                                 <div className="space-y-2">
                                     <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Offer Badge (Opt)</Label>
-                                    <Input placeholder="e.g. NEW LAUNCH" value={offerBadge} onChange={e => setOfferBadge(e.target.value)} className="bg-background/40 border-white/10" />
+                                    <Input placeholder="e.g. NEW LAUNCH" value={offerBadge} onChange={e => setField('offerBadge', e.target.value, setOfferBadge)} className="bg-background/40 border-white/10" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Product Variants (Opt)</Label>
-                                    <Input placeholder="e.g. 30ml, Rose" value={variants} onChange={e => setVariants(e.target.value)} className="bg-background/40 border-white/10" />
+                                    <Input placeholder="e.g. 30ml, Rose" value={variants} onChange={e => setField('variants', e.target.value, setVariants)} className="bg-background/40 border-white/10" />
                                 </div>
                             </div>
                         </section>
+
 
                         {/* NEW: LISTING / AD REQUIREMENTS */}
                         <section className={cn(THEME.glassCard, "p-6 space-y-6 hover:border-primary/20 transition-colors duration-500")}>
@@ -677,14 +715,14 @@ export default function ImageGenerator() {
                             <div className="grid sm:grid-cols-2 gap-5">
                                 <div className="space-y-2">
                                     <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Use Case</Label>
-                                    <Select value={useCase} onValueChange={setUseCase}>
+                                    <Select value={useCase} onValueChange={val => setField('useCase', val, setUseCase)}>
                                         <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
                                         <SelectContent>{USE_CASES.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Shoot Type</Label>
-                                    <Select value={shootType} onValueChange={setShootType}>
+                                    <Select value={shootType} onValueChange={val => setField('shootType', val, setShootType)}>
                                         <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
                                         <SelectContent>{SHOOT_TYPES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                                     </Select>
@@ -696,19 +734,19 @@ export default function ImageGenerator() {
                                     <Label className="text-sm font-medium">Amazon Compliant Mode</Label>
                                     <p className="text-xs text-muted-foreground">Enforce white background & no text</p>
                                 </div>
-                                <Switch checked={amazonCompliant} onCheckedChange={setAmazonCompliant} />
+                                <Switch checked={amazonCompliant} onCheckedChange={val => setField('amazonCompliant', val, setAmazonCompliant)} />
                             </div>
 
                             {!amazonCompliant && (
                                 <div className="space-y-4 border-l-2 border-primary/20 pl-4 ml-1">
                                     <div className="flex items-center justify-between">
                                         <Label className="text-sm font-medium">Text Overlay</Label>
-                                        <Switch checked={textOverlay} onCheckedChange={setTextOverlay} />
+                                        <Switch checked={textOverlay} onCheckedChange={val => setField('textOverlay', val, setTextOverlay)} />
                                     </div>
                                     {textOverlay && (
                                         <div className="grid sm:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
-                                            <Input placeholder="Headline Text" value={headline} onChange={e => setHeadline(e.target.value)} className="bg-background/40 border-white/10 h-9 text-xs" />
-                                            <Input placeholder="CTA Text" value={cta} onChange={e => setCta(e.target.value)} className="bg-background/40 border-white/10 h-9 text-xs" />
+                                            <Input placeholder="Headline Text" value={headline} onChange={e => setField('headline', e.target.value, setHeadline)} className="bg-background/40 border-white/10 h-9 text-xs" />
+                                            <Input placeholder="CTA Text" value={cta} onChange={e => setField('cta', e.target.value, setCta)} className="bg-background/40 border-white/10 h-9 text-xs" />
                                         </div>
                                     )}
                                 </div>
@@ -717,11 +755,11 @@ export default function ImageGenerator() {
                             <div className="grid sm:grid-cols-2 gap-5">
                                 <div className="space-y-2">
                                     <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Brand Colors</Label>
-                                    <Input placeholder="e.g. #7C3AED, gold" value={brandColors} onChange={e => setBrandColors(e.target.value)} className="bg-background/40 border-white/10" />
+                                    <Input placeholder="e.g. #7C3AED, gold" value={brandColors} onChange={e => setField('brandColors', e.target.value, setBrandColors)} className="bg-background/40 border-white/10" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Background / Surface</Label>
-                                    <Select value={surface} onValueChange={setSurface}>
+                                    <Select value={surface} onValueChange={val => setField('surface', val, setSurface)}>
                                         <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
                                         <SelectContent>{BACKGROUND_SURFACES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                                     </Select>
@@ -730,20 +768,20 @@ export default function ImageGenerator() {
 
                             <div className="space-y-2">
                                 <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Props (Optional)</Label>
-                                <Input placeholder="e.g. oranges, droppers, ice cubes" value={props} onChange={e => setProps(e.target.value)} className="bg-background/40 border-white/10" />
+                                <Input placeholder="e.g. oranges, droppers, ice cubes" value={props} onChange={e => setField('props', e.target.value, setProps)} className="bg-background/40 border-white/10" />
                             </div>
 
                             <div className="grid sm:grid-cols-2 gap-5">
                                 <div className="space-y-2">
                                     <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Lighting Mood</Label>
-                                    <Select value={lightingMood} onValueChange={setLightingMood}>
+                                    <Select value={lightingMood} onValueChange={val => setField('lightingMood', val, setLightingMood)}>
                                         <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
                                         <SelectContent>{LIGHTING_MOODS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Camera / Framing</Label>
-                                    <Select value={framing} onValueChange={setFraming}>
+                                    <Select value={framing} onValueChange={val => setField('framing', val, setFraming)}>
                                         <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
                                         <SelectContent>{CAMERA_FRAMING.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
                                     </Select>
@@ -752,7 +790,7 @@ export default function ImageGenerator() {
 
                             <div className="space-y-2">
                                 <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Composition Notes</Label>
-                                <Textarea placeholder="Specific notes on layout or focus..." value={compositionNotes} onChange={e => setCompositionNotes(e.target.value)} className="bg-background/40 border-white/10 min-h-[60px]" />
+                                <Textarea placeholder="Specific notes on layout or focus..." value={compositionNotes} onChange={e => setField('compositionNotes', e.target.value, setCompositionNotes)} className="bg-background/40 border-white/10 min-h-[60px]" />
                             </div>
 
                             <div className="grid grid-cols-2 gap-3 pt-2">
@@ -766,6 +804,7 @@ export default function ImageGenerator() {
                                 ))}
                             </div>
                         </section>
+
 
                         {/* SECTION 2: SUBJECT */}
                         <section className={cn(THEME.glassCard, "p-6 space-y-6 hover:border-primary/20 transition-colors duration-500")}>
@@ -785,14 +824,14 @@ export default function ImageGenerator() {
                                     <Textarea
                                         placeholder="e.g. A futuristic sleek silver sports car driving through a neon city at night..."
                                         value={subject}
-                                        onChange={(e) => setSubject(e.target.value)}
+                                        onChange={(e) => setField('subject', e.target.value, setSubject)}
                                         className="bg-background/40 border-white/10 focus:border-primary/50 focus:ring-primary/20 min-h-[80px]"
                                     />
                                 </div>
                                 <div className="grid sm:grid-cols-2 gap-5">
                                     <div className="space-y-2">
                                         <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Art Style</Label>
-                                        <Select value={style} onValueChange={setStyle}>
+                                        <Select value={style} onValueChange={val => setField('style', val, setStyle)}>
                                             <SelectTrigger className="bg-background/40 border-white/10 focus:ring-primary/20 h-10">
                                                 <SelectValue placeholder="Choose style..." />
                                             </SelectTrigger>
@@ -808,7 +847,7 @@ export default function ImageGenerator() {
                                         <Input
                                             placeholder="e.g. Minimal studio grey"
                                             value={background}
-                                            onChange={(e) => setBackground(e.target.value)}
+                                            onChange={(e) => setField('background', e.target.value, setBackground)}
                                             className="bg-background/40 border-white/10 focus:border-primary/50 focus:ring-primary/20 h-10"
                                         />
                                     </div>
@@ -831,7 +870,7 @@ export default function ImageGenerator() {
                             <div className="grid sm:grid-cols-2 gap-5">
                                 <div className="space-y-2">
                                     <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Lighting</Label>
-                                    <Select value={lighting} onValueChange={setLighting}>
+                                    <Select value={lighting} onValueChange={val => setField('lighting', val, setLighting)}>
                                         <SelectTrigger className="bg-background/40 border-white/10 focus:ring-primary/20 h-10">
                                             <SelectValue placeholder="Select lighting..." />
                                         </SelectTrigger>
@@ -844,7 +883,7 @@ export default function ImageGenerator() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Camera Angle</Label>
-                                    <Select value={camera} onValueChange={setCamera}>
+                                    <Select value={camera} onValueChange={val => setField('camera', val, setCamera)}>
                                         <SelectTrigger className="bg-background/40 border-white/10 focus:ring-primary/20 h-10">
                                             <SelectValue placeholder="Select angle..." />
                                         </SelectTrigger>
@@ -861,11 +900,12 @@ export default function ImageGenerator() {
                                 <Input
                                     placeholder="e.g. blurry, text, watermark, low quality"
                                     value={negative}
-                                    onChange={(e) => setNegative(e.target.value)}
+                                    onChange={(e) => setField('negative', e.target.value, setNegative)}
                                     className="bg-background/40 border-white/10 focus:border-primary/50 focus:ring-primary/20 h-10"
                                 />
                             </div>
                         </section>
+
 
 
                         {/* ACTIONS - REMOVED VISIBLE BUTTON, LOGIC REMAINS */}
@@ -895,7 +935,7 @@ export default function ImageGenerator() {
                                 <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/10 hover:border-primary/30 transition-colors">
                                     <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400/20" />
                                     <span className="text-xs font-mono font-medium text-slate-300">
-                                        <span className="text-white">48</span>/50
+                                        <span className="text-white">{credits ?? '--'}</span>/50
                                     </span>
                                 </div>
                                 <div className="px-2 py-0.5 rounded border border-purple-500/30 bg-purple-500/10 hidden sm:block">
@@ -903,6 +943,31 @@ export default function ImageGenerator() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Error Context Banner */}
+                        {errorType === 'NO_CREDITS' && (
+                            <div className="px-5 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+                                <div className="flex items-center gap-2">
+                                    <AlertCircle className="w-4 h-4 text-amber-500" />
+                                    <span className="text-xs font-medium text-amber-200">No credits remaining</span>
+                                </div>
+                                <Button size="sm" variant="default" className="bg-amber-500 hover:bg-amber-600 text-[10px] h-7 px-3" onClick={() => window.open('/pricing', '_blank')}>
+                                    Upgrade
+                                </Button>
+                            </div>
+                        )}
+
+                        {errorType === 'UNAUTHORIZED' && (
+                            <div className="px-5 py-3 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+                                <div className="flex items-center gap-2">
+                                    <AlertCircle className="w-4 h-4 text-red-500" />
+                                    <span className="text-xs font-medium text-red-200">Session expired. Please login again.</span>
+                                </div>
+                                <Button size="sm" variant="destructive" className="text-[10px] h-7 px-3" onClick={() => window.open('/login', '_blank')}>
+                                    Login
+                                </Button>
+                            </div>
+                        )}
 
                         {/* 2. CHAT & INPUT AREA */}
                         <div className="relative group/chat">
@@ -912,24 +977,29 @@ export default function ImageGenerator() {
                             <div className="relative bg-[#0F0F12]/80 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden shadow-2xl flex flex-col">
 
                                 {/* A. Suggestion Chips */}
-                                <div className="p-4 border-b border-white/5 bg-white/[0.02]">
+                                <div className="p-4 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
                                     <div className="flex flex-wrap gap-2">
                                         {["Amazon packshot", "Lifestyle skincare", "Minimal studio", "Neon luxury", "Bold product ad"].map((chip) => (
                                             <button
                                                 key={chip}
+                                                disabled={loading}
                                                 onClick={() => {
                                                     setAssistantInput(chip);
                                                     // Trigger functionality on next tick to ensure state update
                                                     setTimeout(() => handleAssistantSubmit(), 0);
                                                 }}
-                                                className="group relative text-[10px] font-medium px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-primary/10 hover:border-primary/40 hover:text-white transition-all duration-300 hover:scale-105 active:scale-95 overflow-hidden"
+                                                className="group relative text-[10px] font-medium px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-primary/10 hover:border-primary/40 hover:text-white transition-all duration-300 hover:scale-105 active:scale-95 overflow-hidden disabled:opacity-50"
                                             >
                                                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
                                                 {chip}
                                             </button>
                                         ))}
                                     </div>
+                                    <button onClick={resetAutofill} className="text-[9px] text-muted-foreground hover:text-primary underline px-2 shrink-0">
+                                        Reset Autofill
+                                    </button>
                                 </div>
+
 
                                 {/* B. Chat History */}
                                 <div className="min-h-[280px] max-h-[400px] overflow-y-auto custom-scrollbar p-5 space-y-5 bg-[#0A0A0B]">
