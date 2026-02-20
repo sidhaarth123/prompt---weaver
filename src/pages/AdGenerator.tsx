@@ -341,7 +341,7 @@ export default function AdGenerator() {
 
         const json = await res.json();
 
-        if (!json.ok) {
+        if (!res.ok || !json.ok) {
             toast({
                 title: "Assistant Error",
                 description: json.error || "Failed to generate ad.",
@@ -350,8 +350,9 @@ export default function AdGenerator() {
             return;
         }
 
-        const fill = json.data.fill || {};
-        const output = json.data.output || {};
+        const data = json.data || {};
+        const fill = data.fill || {};
+        const output = data.output || {};
 
         // Auto-fill logic (simplified for brevity)
         const c = fill.campaign || {};
@@ -386,6 +387,7 @@ export default function AdGenerator() {
         if (o.ad_type) setAdType(o.ad_type);
         if (o.video_length) setVideoLength(o.video_length);
         if (o.sections) setSelectedSections(o.sections);
+
 
         // Output Preview
         if (output.prompt) {

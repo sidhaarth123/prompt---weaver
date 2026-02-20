@@ -19,8 +19,9 @@ export interface WebhookResponse {
  */
 export async function callImagePromptWebhook(message: string): Promise<WebhookResponse> {
     try {
-        // 1. Get Supabase session
-        const { data: { session } } = await supabase.auth.getSession();
+        // 1. Get Supabase session safely
+        const { data } = await supabase.auth.getSession();
+        const session = data?.session;
 
         // 2. Extract access_token & validate
         const token = session?.access_token;
@@ -28,20 +29,21 @@ export async function callImagePromptWebhook(message: string): Promise<WebhookRe
             return {
                 success: false,
                 error: "UNAUTHORIZED",
-                message: "Please login again."
+                message: "Please login again to continue."
             };
         }
 
-        // 3. Read Webhook URL from Vite env
+        // 3. Read Webhook URL from Vite env with guard
         const url = import.meta.env.VITE_IMAGE_PROMPT_WEBHOOK_URL;
         if (!url) {
             console.error("VITE_IMAGE_PROMPT_WEBHOOK_URL is not defined in environment variables.");
             return {
                 success: false,
                 error: "CONFIG_MISSING",
-                message: "Webhook configuration missing."
+                message: "System configuration error. Please contact support."
             };
         }
+
 
         // 4. Execute POST request
         const response = await fetch(url, {
@@ -62,21 +64,22 @@ export async function callImagePromptWebhook(message: string): Promise<WebhookRe
         }
 
         // 6. Parse JSON
-        const data = await response.json();
+        const resultData = await response.json();
 
         if (!response.ok) {
             return {
                 success: false,
                 error: "REQUEST_FAILED",
-                message: data?.message || "Request failed."
+                message: resultData?.message || "Request failed."
             };
         }
 
         // Return the successful data payload
         return {
             success: true,
-            ...data
+            ...resultData
         };
+
 
     } catch (error) {
         console.error("Webhook Call Error:", error);

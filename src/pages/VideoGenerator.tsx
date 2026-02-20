@@ -433,7 +433,7 @@ export default function VideoGenerator() {
         };
 
         try {
-            const res = await fetch("http://localhost:5000/api/video-prompt-assistant", {
+            const res = await fetch("/api/video-prompt-assistant", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ message, form_state }),
@@ -441,13 +441,15 @@ export default function VideoGenerator() {
 
             const json = await res.json();
 
-            if (!json.ok) {
+            if (!res.ok || !json.ok) {
                 // throw error to be caught below
                 throw new Error(json.error || "Failed to generate video prompt.");
             }
 
-            const fill = json.data.fill || {};
-            const output = json.data.output || {};
+            const data = json.data || {};
+            const fill = data.fill || {};
+            const output = data.output || {};
+
 
             // Add Assistant Response to Chat
             setChatHistory(prev => [...prev, {

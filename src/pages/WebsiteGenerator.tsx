@@ -470,7 +470,7 @@ export default function WebsiteGenerator() {
             }
         };
 
-        const res = await fetch("http://localhost:5000/api/website-prompt-assistant", {
+        const res = await fetch("/api/website-prompt-assistant", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ message, form_state }),
@@ -478,7 +478,7 @@ export default function WebsiteGenerator() {
 
         const json = await res.json();
 
-        if (!json.ok) {
+        if (!res.ok || !json.ok) {
             toast({
                 title: "Assistant Error",
                 description: json.error || "Failed to generate website blueprint.",
@@ -487,8 +487,10 @@ export default function WebsiteGenerator() {
             return;
         }
 
-        const fill = json.data.fill || {};
-        const output = json.data.output || {};
+        const data = json.data || {};
+        const fill = data.fill || {};
+        const output = data.output || {};
+
 
         // Helper for fuzzy matching options
         const matchOption = (val: string, options: string[]) => {

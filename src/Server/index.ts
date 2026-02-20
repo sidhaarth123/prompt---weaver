@@ -15,13 +15,13 @@ const app = express();
 const PORT = 8787;
 
 // Valid models: gpt-4o-mini, gpt-4o, etc.
-const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o";
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const OPENAI_MODEL = import.meta.env.VITE_OPENAI_MODEL || "gpt-4o";
+const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 
 if (!OPENAI_API_KEY) {
-  console.error("[server] ERROR: OPENAI_API_KEY is missing in .env");
-  process.exit(1);
+  console.error("[server] ERROR: VITE_OPENAI_API_KEY is missing in environment");
 }
+
 
 const openai = new OpenAI({
   apiKey: OPENAI_API_KEY,

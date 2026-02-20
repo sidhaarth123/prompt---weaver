@@ -1,4 +1,15 @@
-import { NextApiRequest, NextApiResponse } from "next";
+type NextApiRequest = {
+    method: string;
+    headers: Record<string, string | string[] | undefined>;
+    body: any;
+    query: Record<string, string | string[] | undefined>;
+};
+
+type NextApiResponse = {
+    status: (code: number) => NextApiResponse;
+    json: (body: any) => void;
+};
+
 import { createClient } from "@supabase/supabase-js";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -13,10 +24,12 @@ import {
     createTimeoutPromise,
 } from "@/lib/workflow-utils";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL!;
-const n8nWebhookSecret = process.env.N8N_WEBHOOK_SECRET!;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!;
+const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY!;
+const n8nWebhookUrl = import.meta.env.VITE_IMAGE_PROMPT_WEBHOOK_URL!;
+const n8nWebhookSecret = import.meta.env.VITE_N8N_WEBHOOK_SECRET!;
+
+
 
 // Server-side Supabase client with service role
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -32,7 +45,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         // 1. Validate Supabase session
-        const authHeader = req.headers.authorization;
+        const authHeader = req.headers.authorization as string;
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
             return res.status(401).json({ error: "Unauthorized", message: "Missing auth token" });
         }

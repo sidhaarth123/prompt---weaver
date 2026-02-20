@@ -25,4 +25,11 @@ if ('caches' in window) {
     });
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+import ErrorBoundary from "./components/ErrorBoundary.tsx";
+
+createRoot(document.getElementById("root")!).render(
+    <ErrorBoundary>
+        <App />
+    </ErrorBoundary>
+);
+
