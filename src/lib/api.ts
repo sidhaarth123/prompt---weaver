@@ -1,13 +1,9 @@
-import { supabase } from "@/integrations/supabase/client";
+import { getValidSession, AuthRequiredError } from "@/lib/authUtils";
 import type { GenerateRequest } from "@/lib/schemas/generateRequest";
 import type { GenerateResponse } from "@/lib/schemas/generateResponse";
-
-/**
- * Secure workflow API client
- * Calls our server API which then communicates with n8n
- */
-
 import type { ApiResponse } from "@/lib/schemas/workflow";
+
+// ─── Shared Types ──────────────────────────────────────────────────────────────
 
 export interface GeneratePromptInput {
   type: "image" | "video" | "website";
@@ -26,131 +22,102 @@ export interface WorkflowData {
 
 export type GeneratePromptResponse = ApiResponse<WorkflowData>;
 
+// ─── Internal helpers ──────────────────────────────────────────────────────────
+
+/** Gets a fresh auth header. Throws AuthRequiredError if session is missing. */
+async function authHeaders(): Promise<Record<string, string>> {
+  const session = await getValidSession();
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${session.access_token}`,
+  };
+}
+
+// ─── API functions ─────────────────────────────────────────────────────────────
+
 /**
- * Generate prompt via secure server workflow
+ * Generate prompt via secure server workflow.
  */
 export async function generatePrompt(
   input: GeneratePromptInput
 ): Promise<GeneratePromptResponse> {
-  // Get session token
-  const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession();
+  const headers = await authHeaders();
 
-  if (sessionError || !session) {
-    throw new Error("Authentication required");
-  }
-
-  // Call our server API (NOT n8n directly)
   const response = await fetch("/api/workflows/run", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${session.access_token}`,
-    },
+    headers,
     body: JSON.stringify(input),
   });
 
   const data: GeneratePromptResponse = await response.json();
 
   if (!response.ok || !data.success) {
-    throw new Error(
-      data.error?.message || `Request failed with status ${response.status}`
-    );
+    throw new Error(data.error?.message || `Request failed with status ${response.status}`);
   }
 
   return data;
 }
 
 /**
- * Generate prompt using AI on the server
- * Calls /api/prompt-assistant which uses our prompt assistant service
- * Provides strict schema validation and guaranteed correct output
+ * Generate prompt using AI on the server.
  */
 export async function generatePromptWithAI(
   request: GenerateRequest
 ): Promise<GenerateResponse> {
-  // Get session token
-  const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession();
+  const headers = await authHeaders();
 
-  if (sessionError || !session) {
-    throw new Error("Authentication required");
-  }
-
-  // Call our AI-powered API endpoint
   const response = await fetch("/api/prompt-assistant", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${session.access_token}`,
-    },
+    headers,
     body: JSON.stringify(request),
   });
 
   const data: GenerateResponse = await response.json();
 
   if (!response.ok || !data.success) {
-    throw new Error(
-      data.error?.message || `Request failed with status ${response.status}`
-    );
+    throw new Error(data.error?.message || `Request failed with status ${response.status}`);
   }
 
   return data;
 }
 
 /**
- * Poll workflow status
+ * Poll workflow status.
  */
 export async function getWorkflowStatus(requestId: string): Promise<GeneratePromptResponse> {
-  const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession();
-
-  if (sessionError || !session) {
-    throw new Error("Authentication required");
-  }
+  const headers = await authHeaders();
 
   const response = await fetch(`/api/workflows/status?requestId=${requestId}`, {
     method: "GET",
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-    },
+    headers,
   });
 
   const data: GeneratePromptResponse = await response.json();
 
   if (!response.ok || !data.success) {
-    throw new Error(
-      data.error?.message || `Request failed with status ${response.status}`
-    );
+    throw new Error(data.error?.message || `Request failed with status ${response.status}`);
   }
 
   return data;
 }
 
 /**
- * Poll workflow until completion (with timeout)
+ * Poll workflow until completion (with timeout).
  */
 export async function pollWorkflowUntilComplete(
   requestId: string,
-  maxWaitMs: number = 60000,
-  pollIntervalMs: number = 2000
+  maxWaitMs = 60_000,
+  pollIntervalMs = 2_000
 ): Promise<GeneratePromptResponse> {
-  const startTime = Date.now();
+  const deadline = Date.now() + maxWaitMs;
 
-  while (Date.now() - startTime < maxWaitMs) {
+  while (Date.now() < deadline) {
     const status = await getWorkflowStatus(requestId);
 
     if (status.data?.status === "succeeded" || status.data?.status === "failed") {
       return status;
     }
 
-    // Wait before next poll
     await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
   }
 

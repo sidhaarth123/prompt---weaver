@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Sparkles,
@@ -40,6 +41,7 @@ export const PremiumChatbot: React.FC<PremiumChatbotProps> = ({
     const [input, setInput] = useState("");
     const [copiedText, setCopiedText] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -216,7 +218,12 @@ export const PremiumChatbot: React.FC<PremiumChatbotProps> = ({
                                 </div>
                             </div>
                             <Button size="sm" className={cn("w-full h-9 rounded-xl font-bold text-xs uppercase tracking-wider",
-                                errorStatus === 'NO_CREDITS' ? "bg-yellow-500 hover:bg-yellow-600 text-black shadow-[0_0_15px_rgba(234,179,8,0.3)]" : "bg-primary")}>
+                                errorStatus === 'NO_CREDITS' ? "bg-yellow-500 hover:bg-yellow-600 text-black shadow-[0_0_15px_rgba(234,179,8,0.3)]" : "bg-primary")}
+                                onClick={() => {
+                                    if (errorStatus === 'UNAUTHORIZED') navigate("/auth");
+                                    else if (errorStatus === 'NO_CREDITS') navigate("/pricing");
+                                }}
+                            >
                                 {errorStatus === 'UNAUTHORIZED' ? "Login Again" :
                                     errorStatus === 'NO_CREDITS' ? "Upgrade Now" : "Contact Support"}
                             </Button>
@@ -251,6 +258,7 @@ export const PremiumChatbot: React.FC<PremiumChatbotProps> = ({
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             className="min-h-[90px] w-full resize-none border-0 bg-transparent px-4 py-3.5 text-sm focus-visible:ring-0 placeholder:text-muted-foreground/40 leading-relaxed"
+                            disabled={isLoading || errorStatus === 'UNAUTHORIZED'}
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter' && !e.shiftKey) {
                                     e.preventDefault();

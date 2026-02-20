@@ -23,16 +23,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setLoading(false);
-    });
-
+    // 1. Immediately try to restore session from localStorage (synchronous-like via getSession)
     supabase.auth.getSession().then(({ data }) => {
       setSession(data?.session ?? null);
       setLoading(false);
     });
 
+    // 2. Subscribe to all future auth events — this handles:
+    //    SIGNED_IN   → after OAuth callback or password login
+    //    TOKEN_REFRESHED → Supabase silently renewed the access_token
+    //    SIGNED_OUT  → explicit sign-out or server-side invalidation
+    //    USER_UPDATED → password/email change
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (import.meta.env.DEV) {
+        console.debug(`[Auth] ${event}`, session?.user?.email ?? "no user");
+      }
+      setSession(session);
+      setLoading(false);
+    });
 
     return () => subscription.unsubscribe();
   }, []);
