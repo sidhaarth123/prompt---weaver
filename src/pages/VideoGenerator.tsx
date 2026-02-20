@@ -945,192 +945,155 @@ export default function VideoGenerator() {
                     </div>
 
                     {/* RIGHT: VIDEO PERFORMANCE ASSISTANT PANEL */}
-                    <div className="flex flex-col space-y-6 animate-in fade-in slide-in-from-right-4 duration-700 delay-100">
+                    <div className="flex flex-col space-y-4 animate-in fade-in slide-in-from-right-4 duration-700 delay-100">
 
-                        {/* CHAT INTERFACE CARD */}
-                        <div className="flex flex-col h-[600px] rounded-[24px] border border-white/[0.08] bg-[#0F0F16]/65 backdrop-blur-[30px] shadow-[0_0_30px_rgba(0,0,0,0.2)] overflow-hidden relative group ring-1 ring-white/5 hover:ring-white/10 transition-all">
+                        {/* 1. HEADER (Title + Chips) */}
+                        <div className={cn(THEME.glassCard, "p-5 space-y-4 border-primary/20 relative overflow-hidden group")}>
+                            {/* Glow Effect */}
+                            <div className="absolute top-0 right-0 p-20 bg-primary/10 blur-[80px] rounded-full pointer-events-none group-hover:bg-primary/20 transition-all duration-1000" />
 
-                            {/* 1. Header (Floating / Fixed Top) */}
-                            <div className="px-6 py-4 flex items-center justify-between border-b border-white/[0.06] bg-white/[0.02] backdrop-blur-md">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
-                                        <Bot className="w-5 h-5 text-white" />
-                                    </div>
-                                    <div>
-                                        <h1 className="text-lg font-bold text-white leading-none">Video Prompt Assistant</h1>
-                                        <p className="text-xs text-muted-foreground mt-1 font-medium">Auto-fill e-commerce video scripts instantly</p>
-                                    </div>
+                            <div className="flex items-center justify-between relative z-10">
+                                <div>
+                                    <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70 flex items-center gap-2">
+                                        <Bot className="w-5 h-5 text-orange-400 fill-orange-400/20" />
+                                        Video Prompt Assistant <span className="text-[10px] text-muted-foreground/50 font-mono">v3</span>
+                                    </h2>
+                                    <p className="text-xs text-orange-300/80 font-medium mt-1">
+                                        Auto-fill e-commerce video scripts instantly
+                                    </p>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="flex h-2.5 w-2.5 relative">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
-                                    </span>
-                                    <span className="text-xs font-medium text-green-400/80">ONLINE</span>
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Online</span>
                                 </div>
                             </div>
 
-                            {/* 2. Messages Area (Flex Grow, Scrollable) */}
-                            <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-gradient-to-b from-transparent to-black/20">
-                                {chatHistory.length === 0 ? (
-                                    <div className="h-full flex flex-col items-center justify-center text-center space-y-6 opacity-60">
-                                        <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border border-white/10 animate-pulse">
-                                            <Sparkles className="w-8 h-8 text-primary/40" />
-                                        </div>
-                                        <div className="space-y-2 max-w-sm">
-                                            <h3 className="text-lg font-medium text-white">How can I help you?</h3>
-                                            <p className="text-sm text-muted-foreground">
-                                                I can brainstorm, script, and direct high-converting video ads for TikTok, Reels, and YouTube.
-                                            </p>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-6">
-                                        {chatHistory.map((msg, i) => (
-                                            <motion.div
-                                                key={i}
-                                                initial={{ opacity: 0, y: 20 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                transition={{ duration: 0.3 }}
-                                                className={cn(
-                                                    "flex w-full",
-                                                    msg.role === "user" ? "justify-end" : "justify-start"
-                                                )}
-                                            >
-                                                <div
-                                                    className={cn(
-                                                        "max-w-[85%] rounded-[20px] p-5 text-sm leading-relaxed shadow-lg",
-                                                        msg.role === "user"
-                                                            ? "bg-gradient-to-br from-orange-500 to-red-600 text-white rounded-tr-md"
-                                                            : "bg-white/[0.07] border border-white/[0.08] text-slate-200 rounded-tl-md backdrop-blur-sm"
-                                                    )}
-                                                >
-                                                    {msg.content}
-                                                </div>
-                                            </motion.div>
-                                        ))}
-
-                                        {loading && (
-                                            <motion.div
-                                                initial={{ opacity: 0, y: 10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                className="flex justify-start w-full"
-                                            >
-                                                <div className="bg-white/[0.04] border border-white/[0.05] text-white px-6 py-4 rounded-[20px] rounded-tl-md backdrop-blur-sm flex items-center gap-3 shadow-lg">
-                                                    <span className="text-xs font-medium text-muted-foreground">Thinking</span>
-                                                    <div className="flex gap-1.5 pt-1">
-                                                        <span className="w-2 h-2 rounded-full bg-gradient-to-r from-orange-500 to-red-500 animate-[bounce_1s_infinite_0ms]" />
-                                                        <span className="w-2 h-2 rounded-full bg-gradient-to-r from-orange-500 to-red-500 animate-[bounce_1s_infinite_200ms]" />
-                                                        <span className="w-2 h-2 rounded-full bg-gradient-to-r from-orange-500 to-red-500 animate-[bounce_1s_infinite_400ms]" />
-                                                    </div>
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </div>
-                                )}
-                                <div ref={chatEndRef} className="h-4" />
+                            {/* CHIPS */}
+                            <div className="flex flex-wrap gap-2 relative z-10">
+                                {["15s TikTok UGC ad", "Amazon listing demo", "Problem → Solution hook", "Premium Shopify promo", "Offer + urgency ad"].map((chip) => (
+                                    <button
+                                        key={chip}
+                                        onClick={() => setAssistantInput(chip)}
+                                        className="text-[10px] px-2.5 py-1 rounded-full bg-white/5 border border-white/5 hover:bg-primary/20 hover:border-primary/30 hover:text-primary transition-all cursor-pointer"
+                                    >
+                                        {chip}
+                                    </button>
+                                ))}
                             </div>
+                        </div>
 
-                            {/* 3. Sticky Input Area (Bottom) */}
-                            <div className="p-5 border-t border-white/[0.08] bg-black/20 backdrop-blur-xl z-20">
-                                {/* Suggestion Chips */}
-                                <div className="flex overflow-x-auto gap-2 pb-4 scrollbar-none mask-fade-right">
-                                    {["15s TikTok UGC ad", "Amazon listing demo", "Problem → Solution hook", "Premium Shopify promo", "Offer + urgency ad"].map((chip, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => setAssistantInput(chip)}
-                                            className="whitespace-nowrap px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-muted-foreground hover:bg-white/10 hover:text-white hover:border-primary/40 transition-all flex-shrink-0"
-                                        >
-                                            {chip}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                {/* Input Field */}
-                                <div className="relative group/input">
-                                    <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500 to-red-500 rounded-[18px] opacity-0 group-focus-within/input:opacity-20 transition duration-500 blur-md transition-all"></div>
-                                    <div className="relative flex items-end gap-2 bg-[#1A1A24] border border-white/10 rounded-[16px] p-2 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-inner">
-                                        <Textarea
-                                            placeholder="Describe your video... e.g. 15s UGC skincare ad, 9:16, strong hook..."
-                                            value={assistantInput}
-                                            onChange={e => setAssistantInput(e.target.value)}
-                                            className="w-full min-h-[56px] max-h-[120px] bg-transparent border-0 resize-none text-base p-3 focus-visible:ring-0 placeholder:text-muted-foreground/40 text-white leading-relaxed"
-                                            onKeyDown={(e) => {
-                                                if (e.key === "Enter" && !e.shiftKey) {
-                                                    e.preventDefault();
-                                                    handleAssistantSubmit();
-                                                }
-                                            }}
-                                        />
-                                        <Button
-                                            size="icon"
-                                            onClick={handleAssistantSubmit}
-                                            disabled={loading || !assistantInput.trim()}
-                                            className={cn(
-                                                "mb-1 h-10 w-10 rounded-xl transition-all duration-300 shadow-lg",
-                                                assistantInput.trim()
-                                                    ? "bg-gradient-to-br from-orange-500 to-red-600 hover:scale-105 hover:shadow-orange-500/25 text-white"
-                                                    : "bg-white/5 text-muted-foreground hover:bg-white/10"
-                                            )}
-                                        >
-                                            <ArrowUp className="w-5 h-5" />
-                                        </Button>
-                                    </div>
+                        {/* 2. STICKY INPUT */}
+                        <div className="sticky top-24 z-30 group/input">
+                            <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl opacity-20 group-hover/input:opacity-40 transition duration-500 blur-sm" />
+                            <div className="relative bg-[#0F0F12] rounded-xl p-1 shadow-2xl border border-white/10">
+                                <Textarea
+                                    placeholder="Describe your video... e.g. 15s UGC skincare ad, 9:16, strong hook..."
+                                    value={assistantInput}
+                                    onChange={(e) => setAssistantInput(e.target.value)}
+                                    className="min-h-[80px] w-full resize-none border-0 bg-transparent p-3 text-sm focus-visible:ring-0 placeholder:text-muted-foreground/50"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleAssistantSubmit();
+                                        }
+                                    }}
+                                />
+                                <div className="flex justify-between items-center px-2 pb-2">
+                                    <span className="text-[10px] text-muted-foreground/60 pl-2">Press Enter to generate</span>
+                                    <Button
+                                        size="sm"
+                                        onClick={handleAssistantSubmit}
+                                        disabled={loading || !assistantInput.trim()}
+                                        className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 text-white shadow-lg shadow-orange-500/20 border-0 h-8 px-4 rounded-lg font-medium text-xs transition-all hover:scale-105 active:scale-95"
+                                    >
+                                        {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}
+                                        Auto-Fill & Generate
+                                    </Button>
                                 </div>
                             </div>
                         </div>
 
-                        {/* 4. Output Result (Below Chat) */}
-                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200 mt-6">
-                            <div className="flex items-center justify-between mb-4 px-1">
-                                <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                    <Clapperboard className="w-4 h-4" /> Generated Script
-                                </h2>
-                                {result && (
-                                    <div className="flex gap-2">
-                                        <Button variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground hover:text-white" onClick={() => copyToClipboard(result.text, false)}>
-                                            <Copy className="w-3 h-3 mr-1.5" /> Copy Text
-                                        </Button>
-                                        <Button variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground hover:text-white" onClick={() => copyToClipboard(result.json, true)}>
-                                            <Code2 className="w-3 h-3 mr-1.5" /> Copy JSON
-                                        </Button>
+                        {/* 3. CHAT MESSAGES (Scrollable) */}
+                        <div className="min-h-[320px] max-h-[500px] overflow-y-auto custom-scrollbar space-y-4 p-5 rounded-2xl bg-white/[0.03] border border-white/10 shadow-[inset_0_0_22px_rgba(255,90,0,0.10)] flex flex-col">
+                            {chatHistory.length === 0 && !result && (
+                                <div className="flex-1 flex flex-col items-center justify-center text-center p-8 opacity-70 mt-12">
+                                    <Sparkles className="w-10 h-10 mb-4 text-primary/60 animate-pulse" />
+                                    <p className="text-[15px] font-medium mb-1">Director Assistant Ready</p>
+                                    <p className="text-sm text-muted-foreground">Type a video concept above to start.</p>
+                                </div>
+                            )}
+                            {chatHistory.map((msg, idx) => (
+                                <motion.div
+                                    key={idx}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className={cn(
+                                        "flex w-full mb-2",
+                                        msg.role === 'user' ? "justify-end" : "justify-start"
+                                    )}
+                                >
+                                    <div className={cn(
+                                        "max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-md backdrop-blur-md leading-relaxed",
+                                        msg.role === 'user'
+                                            ? "bg-gradient-to-br from-orange-500 to-red-600 text-white rounded-tr-sm border border-primary/20"
+                                            : "bg-muted/60 text-foreground/90 rounded-tl-sm border border-white/10 shadow-[0_0_15px_rgba(255,90,0,0.05)]"
+                                    )}>
+                                        {msg.content}
                                     </div>
-                                )}
-                            </div>
+                                </motion.div>
+                            ))}
+                            {loading && <AssistantTypingIndicator />}
+                        </div>
 
-                            <div className="bg-white/[0.04] border border-white/[0.08] rounded-2xl p-5 shadow-lg min-h-[250px] flex flex-col">
-                                <Tabs defaultValue="text" className="w-full flex-1 flex flex-col">
-                                    <div className="border-b border-white/5 pb-4 mb-4">
-                                        <TabsList className="bg-transparent border-b-0 p-0 h-auto justify-start gap-6">
-                                            <TabsTrigger
-                                                value="text"
-                                                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 py-1 text-xs uppercase tracking-wide font-medium"
-                                            >
-                                                Prompt / Script
-                                            </TabsTrigger>
-                                            <TabsTrigger
-                                                value="json"
-                                                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 py-1 text-xs uppercase tracking-wide font-medium"
-                                            >
-                                                JSON Spec
-                                            </TabsTrigger>
-                                        </TabsList>
-                                    </div>
+                        {/* DIVIDER */}
+                        <div className="border-t border-white/10 pb-4" />
 
-                                    <div className="relative flex-1">
-                                        <TabsContent value="text" className="m-0 h-auto outline-none focus:outline-none">
-                                            <div className="w-full font-mono text-sm leading-relaxed text-slate-300 whitespace-pre-wrap break-words">
-                                                {result?.text || <span className="text-muted-foreground/30 italic">Generated script will appear here...</span>}
+                        {/* 4. OUTPUT RESULT (Bottom) */}
+                        <div className="h-auto min-h-[300px] mt-4 flex flex-col">
+                            {result ? (
+                                <motion.div
+                                    key="result"
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.98 }}
+                                    className={cn(THEME.glassCard, "flex-1 overflow-hidden flex flex-col shadow-2xl border-primary/20 rounded-xl relative")}
+                                >
+                                    {/* Soft Glow Border */}
+                                    <div className="absolute inset-0 border border-primary/20 rounded-xl pointer-events-none z-20" />
+
+                                    <Tabs defaultValue="text" className="w-full h-auto flex flex-col">
+                                        <div className="border-b border-white/5 bg-background/40 px-3 py-2 backdrop-blur-sm flex justify-between items-center">
+                                            <TabsList className="bg-transparent border-0 p-0 h-auto gap-2">
+                                                <TabsTrigger value="text" className="data-[state=active]:bg-primary/20 h-7 text-[10px] px-3 rounded-full">PROMPT</TabsTrigger>
+                                                <TabsTrigger value="json" className="data-[state=active]:bg-primary/20 h-7 text-[10px] px-3 rounded-full">JSON SPEC</TabsTrigger>
+                                            </TabsList>
+                                            <div className="flex gap-2">
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => copyToClipboard(result.text, false)}>
+                                                    <Copy className="w-3.5 h-3.5" />
+                                                </Button>
                                             </div>
-                                        </TabsContent>
-                                        <TabsContent value="json" className="m-0 h-auto outline-none focus:outline-none">
-                                            <pre className="w-full font-mono text-xs text-emerald-400 leading-relaxed whitespace-pre-wrap break-all">
-                                                {result?.json || <span className="text-muted-foreground/30 italic">JSON spec will appear here...</span>}
-                                            </pre>
-                                        </TabsContent>
-                                    </div>
-                                </Tabs>
-                            </div>
+                                        </div>
+
+                                        <div className="relative h-auto min-h-[300px] bg-[#09090b]">
+                                            <TabsContent value="text" className="m-0 h-full">
+                                                <div className="h-full w-full p-4 font-mono text-xs leading-relaxed text-slate-300 whitespace-pre-wrap break-words border-0 bg-transparent" style={{ fontFamily: '"Geist Mono", monospace' }}>
+                                                    {result.text}
+                                                </div>
+                                            </TabsContent>
+                                            <TabsContent value="json" className="m-0 h-full">
+                                                <pre className="h-full w-full overflow-auto p-4 text-[10px] font-mono text-emerald-400 leading-relaxed custom-scrollbar whitespace-pre-wrap break-all">
+                                                    {result.json}
+                                                </pre>
+                                            </TabsContent>
+                                        </div>
+                                    </Tabs>
+                                </motion.div>
+                            ) : (
+                                // Placeholder for visual balance
+                                <div className="h-32 rounded-xl border border-dashed border-white/10 bg-white/[0.02] flex items-center justify-center">
+                                    <span className="text-xs text-muted-foreground/30">Output will appear here</span>
+                                </div>
+                            )}
                         </div>
 
                     </div>

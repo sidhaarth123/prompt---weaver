@@ -32,7 +32,16 @@ import {
     Camera,
     Palette,
     Layers,
-    AlertCircle
+    AlertCircle,
+    Zap,
+    Clock,
+    Cpu,
+    ChevronRight,
+    Wand2,
+    Share2,
+    ThumbsUp,
+    ThumbsDown,
+    LayoutTemplate
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -356,156 +365,131 @@ export default function ImageGenerator() {
     };
 
     async function askAssistant(message: string) {
-        setLoading(true); // START LOADING FOR ASSISTANT
-        const form_state = {
-            platform: platform ?? "",
-            aspect_ratio: aspectRatio ?? "",
-            subject_description: subject ?? "",
-            art_style: style ?? "",
-            background_scene: background ?? "",
-            lighting: lighting ?? "",
-            camera_angle: camera ?? "",
-            negative_prompt: negative ?? "",
-            ecom: {
-                product_name: productName,
-                category,
-                brand_name: brandName,
-                target_customer: targetCustomer,
-                benefits,
-                offer_badge: offerBadge,
-                variants,
-                use_case: useCase,
-                shoot_type: shootType,
-                amazon_compliant: amazonCompliant,
-                text_overlay_enabled: textOverlay,
-                headline_text: headline,
-                cta_text: cta,
-                brand_colors: brandColors,
-                background_surface: surface,
-                props,
-                lighting_mood: lightingMood,
-                camera_framing: framing,
-                composition_notes: compositionNotes,
-                rules
-            }
+        setLoading(true);
+
+        // 1. Get or Create Session ID
+        let sessionId = localStorage.getItem("pw_session_id");
+        if (!sessionId) {
+            sessionId = crypto.randomUUID();
+            localStorage.setItem("pw_session_id", sessionId);
+        }
+
+        // 2. Gather Current Fields
+        const current_fields = {
+            platform,
+            aspect_ratio: aspectRatio,
+            subject_description: subject,
+            art_style: style,
+            background_scene: background,
+            lighting,
+            camera_angle: camera,
+            negative_prompt: negative,
+            product_name: productName,
+            category,
+            brand_name: brandName,
+            target_customer: targetCustomer,
+            benefits,
+            offer_badge: offerBadge,
+            variants,
+            use_case: useCase,
+            shoot_type: shootType,
+            amazon_compliant: amazonCompliant,
+            text_overlay: textOverlay,
+            headline_text: headline,
+            cta_text: cta,
+            brand_colors: brandColors,
+            background_surface: surface,
+            props,
+            lighting_mood: lightingMood,
+            camera_framing: framing,
+            composition_notes: compositionNotes,
+            rules
         };
 
         try {
-            const res = await fetch("/api/prompt-assistant", {
+            // 3. Call Vercel API Route
+            const res = await fetch("/api/parse", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message, form_state }),
+                body: JSON.stringify({
+                    session_id: sessionId,
+                    message,
+                    current_fields
+                }),
             });
 
-            const json = await res.json();
-
-            if (!json?.ok) {
-                throw new Error(json?.error || "Failed to generate prompt.");
+            const text = await res.text();
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                console.error("Non-JSON response from /api/parse:", text);
+                throw new Error("Server did not return valid JSON. Check console for details.");
             }
 
-            const fill = json?.data?.fill || {};
-            const output = json?.data?.output || {};
+            if (!res.ok) {
+                throw new Error(data.error || `API Error: ${res.status}`);
+            }
 
-            // Add Assistant Response to Chat
-            // We use a predefined nice success message or use something from the API if available. 
-            // The API doesn't return a "message" field usually, just data. 
-            // So we'll synthesize a message.
+            const { patch, missing_questions } = data;
+
+            // 4. Apply Patch (Merge into existing state)
+            if (patch) {
+                if (patch.platform) setPlatform(patch.platform);
+                if (patch.aspect_ratio) setAspectRatio(patch.aspect_ratio);
+                if (patch.subject_description) setSubject(patch.subject_description);
+                if (patch.art_style) setStyle(patch.art_style);
+                if (patch.background_scene) setBackground(patch.background_scene);
+                if (patch.lighting) setLighting(patch.lighting);
+                if (patch.camera_angle) setCamera(patch.camera_angle);
+                if (patch.negative_prompt) setNegative(patch.negative_prompt);
+
+                // E-com fields
+                if (patch.product_name) setProductName(patch.product_name);
+                if (patch.category) setCategory(patch.category);
+                if (patch.brand_name) setBrandName(patch.brand_name);
+                if (patch.target_customer) setTargetCustomer(patch.target_customer);
+                if (patch.benefits) setBenefits(patch.benefits);
+                if (patch.offer_badge) setOfferBadge(patch.offer_badge);
+                if (patch.variants) setVariants(patch.variants);
+                if (patch.use_case) setUseCase(patch.use_case);
+                if (patch.shoot_type) setShootType(patch.shoot_type);
+                if (patch.amazon_compliant !== undefined) setAmazonCompliant(patch.amazon_compliant);
+                if (patch.text_overlay !== undefined) setTextOverlay(patch.text_overlay);
+                if (patch.headline_text) setHeadline(patch.headline_text);
+                if (patch.cta_text) setCta(patch.cta_text);
+                if (patch.brand_colors) setBrandColors(patch.brand_colors);
+                if (patch.background_surface) setSurface(patch.background_surface);
+                if (patch.props || patch.props_optional) setProps(patch.props || patch.props_optional);
+                if (patch.lighting_mood) setLightingMood(patch.lighting_mood);
+                if (patch.camera_framing) setFraming(patch.camera_framing);
+                if (patch.composition_notes) setCompositionNotes(patch.composition_notes);
+            }
+
+            // 5. Handle Response Message
+            let assistantResponse = "";
+            if (missing_questions && missing_questions.length > 0) {
+                assistantResponse = missing_questions.join("\n");
+            } else {
+                assistantResponse = "I've updated the settings based on your request. Ready to generate?";
+            }
+
             setChatHistory(prev => [...prev, {
                 role: 'assistant',
-                content: "I've updated the settings and generated your prompt!"
+                content: assistantResponse
             }]);
 
-            // ✅ Normalize aspect ratio to match your button values exactly
-            const allowedAspectRatios = new Set(["1:1", "4:5", "16:9", "9:16"]);
-            let ar = (fill.aspect_ratio || "").trim();
-            if (!allowedAspectRatios.has(ar)) {
-                const arLower = ar.toLowerCase().replace(/\s+/g, "");
-                if (arLower.includes("1:1") || arLower === "1x1" || arLower === "square") ar = "1:1";
-                else if (arLower.includes("4:5") || arLower === "4x5" || arLower.includes("portrait")) ar = "4:5";
-                else if (arLower.includes("16:9") || arLower === "16x9" || arLower.includes("landscape")) ar = "16:9";
-                else if (arLower.includes("9:16") || arLower === "9x16" || arLower.includes("vertical") || arLower.includes("story")) ar = "9:16";
-            }
-
-            // Helper for fuzzy matching options
-            const matchOption = (val: string, options: string[]) => {
-                if (!val) return "";
-                const v = val.toLowerCase();
-                // Try exact, then partial (either direction)
-                return options.find(o => o.toLowerCase() === v) ||
-                    options.find(o => o.toLowerCase().includes(v) || v.includes(o.toLowerCase())) ||
-                    val;
-            };
-
-            // ✅ Apply fill (only if present)
-            if (fill.platform) setPlatform(matchOption(fill.platform, PLATFORMS));
-            if (ar) setAspectRatio(ar);
-            if (fill.subject_description) setSubject(fill.subject_description);
-            if (fill.art_style) setStyle(matchOption(fill.art_style, STYLES));
-            if (fill.background_scene) setBackground(fill.background_scene);
-            if (fill.lighting) setLighting(matchOption(fill.lighting, LIGHTING_OPTIONS));
-            if (fill.camera_angle) setCamera(matchOption(fill.camera_angle, CAMERA_ANGLES));
-            if (fill.negative_prompt !== undefined) setNegative(fill.negative_prompt);
-
-            // Apply E-com Fill
-            if (fill.ecom) {
-                const e = fill.ecom;
-                if (e.product_name) setProductName(e.product_name);
-                if (e.category) setCategory(matchOption(e.category, PRODUCT_CATEGORIES));
-                if (e.brand_name) setBrandName(e.brand_name);
-                if (e.target_customer) setTargetCustomer(e.target_customer);
-                if (e.benefits) setBenefits(e.benefits);
-                if (e.offer_badge) setOfferBadge(e.offer_badge);
-                if (e.variants) setVariants(e.variants);
-
-                if (e.use_case) setUseCase(matchOption(e.use_case, USE_CASES));
-                if (e.shoot_type) setShootType(matchOption(e.shoot_type, SHOOT_TYPES));
-                if (typeof e.amazon_compliant === 'boolean') setAmazonCompliant(e.amazon_compliant);
-                if (typeof e.text_overlay_enabled === 'boolean') setTextOverlay(e.text_overlay_enabled);
-                if (e.headline_text) setHeadline(e.headline_text);
-                if (e.cta_text) setCta(e.cta_text);
-                if (e.brand_colors) setBrandColors(e.brand_colors);
-                if (e.background_surface) setSurface(matchOption(e.background_surface, BACKGROUND_SURFACES));
-                if (e.props) setProps(e.props);
-                if (e.lighting_mood) setLightingMood(matchOption(e.lighting_mood, LIGHTING_MOODS));
-                if (e.camera_framing) setFraming(matchOption(e.camera_framing, CAMERA_FRAMING));
-                if (e.composition_notes) setCompositionNotes(e.composition_notes);
-
-                if (e.rules) {
-                    setRules(prev => ({
-                        ...prev,
-                        noWatermark: !!e.rules.no_watermark,
-                        noExtraText: !!e.rules.no_extra_text,
-                        noDistortedLogos: !!e.rules.no_distorted_logos,
-                        avoidClaims: !!e.rules.avoid_claims
-                    }));
-                }
-            }
-
-            // Construct the detailed JSON spec
-            const jsonSpec = {
-                prompt: output.prompt || "",
-                negative_prompt: output.negative_prompt || fill.negative_prompt || "",
-                aspect_ratio: output.params?.aspect_ratio || fill.aspect_ratio || "",
-                art_style: output.params?.art_style || fill.art_style || "",
-                lighting: output.params?.lighting || fill.lighting || "",
-                camera_angle: output.params?.camera_angle || fill.camera_angle || ""
-            };
-
-            // ✅ Apply Output Preview (map to your existing output states)
-            if (output.prompt !== undefined) {
-                setResult({
-                    text: output.prompt,
-                    json: JSON.stringify(jsonSpec, null, 2)
-                });
-            }
-
         } catch (error: any) {
-            console.error("Prompt assistant error:", error);
+            console.error("Assistant Error:", error);
             toast({
                 title: "Assistant Error",
-                description: error.message || "Failed to generate prompt.",
+                description: "Could not connect to the assistant backend. Please try again.",
                 variant: "destructive",
             });
+            setChatHistory(prev => [...prev, {
+                role: 'assistant',
+                content: "Sorry, I'm having trouble connecting to my brain right now. Please try again later."
+            }]);
         } finally {
             setLoading(false);
         }
@@ -527,22 +511,36 @@ export default function ImageGenerator() {
                     {/* LEFT: INPUTS */}
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                         {/* Header */}
-                        <div className="mb-2">
-                            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 mb-4 backdrop-blur-md">
-                                <Sparkles className="w-3.5 h-3.5 text-primary" />
+                        <div className="mb-2 relative">
+                            {/* Trust Signal */}
+                            <div className="absolute -top-12 left-0 animate-in fade-in slide-in-from-top-4 duration-700 delay-200">
+                                <div className="flex items-center gap-2 text-[10px] font-medium text-muted-foreground/60 bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
+                                    <div className="flex -space-x-1.5">
+                                        {[1, 2, 3].map(i => (
+                                            <div key={i} className={`w-4 h-4 rounded-full border border-[#09090b] bg-gray-${i * 100 + 400}`} style={{ backgroundColor: `hsl(260, ${i * 10}%, ${90 - i * 10}%)` }} />
+                                        ))}
+                                    </div>
+                                    <span>Trusted by 1,000+ E-commerce creators</span>
+                                </div>
+                            </div>
+
+                            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 mb-4 backdrop-blur-md shadow-[0_0_15px_-3px_rgba(124,58,237,0.3)]">
+                                <Sparkles className="w-3.5 h-3.5 text-primary animate-pulse" />
                                 <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-                                    Visual Engine
+                                    Visual Engine v3.0
                                 </span>
                             </div>
-                            <h1 className="text-4xl font-bold tracking-tight mb-3">
-                                <span className={THEME.gradientText}>Image Prompt Generator</span>
+                            <h1 className="text-5xl font-bold tracking-tight mb-4">
+                                <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-primary/80 to-indigo-400 drop-shadow-sm">
+                                    Image Prompt Generator
+                                </span>
                             </h1>
-                            <p className="text-muted-foreground text-lg max-w-2xl leading-relaxed">
-                                Craft professional image prompts for Midjourney, DALL-E 3, and Stable Diffusion.
+                            <p className="text-muted-foreground text-lg max-w-2xl leading-relaxed font-light">
+                                Craft professional image prompts for <span className="text-white/80 font-medium">Midjourney</span>, <span className="text-white/80 font-medium">DALL-E 3</span>, and <span className="text-white/80 font-medium">Stable Diffusion</span> with a single click.
                             </p>
                         </div>
 
-                        <div className="h-px w-full bg-border/40" />
+                        <div className="h-px w-full bg-gradient-to-r from-transparent via-border/60 to-transparent" />
 
                         {/* MANUAL CONTROLS HEADER */}
                         <div className="flex items-center justify-between pb-2">
@@ -876,157 +874,265 @@ export default function ImageGenerator() {
                     </div>
 
                     {/* RIGHT: AI ASSISTANT PANEL */}
-                    {/* RIGHT: AI ASSISTANT PANEL */}
-                    <div className="flex flex-col space-y-4 animate-in fade-in slide-in-from-right-4 duration-700 delay-100">
+                    <div className="flex flex-col space-y-5 animate-in fade-in slide-in-from-right-4 duration-700 delay-100">
 
-                        {/* 1. HEADER (Title + Chips) */}
-                        <div className={cn(THEME.glassCard, "p-5 space-y-4 border-primary/20 relative overflow-hidden group")}>
-                            {/* Glow Effect */}
-                            <div className="absolute top-0 right-0 p-20 bg-primary/10 blur-[80px] rounded-full pointer-events-none group-hover:bg-primary/20 transition-all duration-1000" />
-
-                            <div className="flex items-center justify-between relative z-10">
+                        {/* 1. HEADER (Credits & Status) */}
+                        <div className={cn(THEME.glassCard, "px-5 py-4 flex items-center justify-between border-primary/20 shadow-[0_4px_20px_-10px_rgba(124,58,237,0.2)]")}>
+                            <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-inner">
+                                    <Wand2 className="w-4 h-4 text-white" />
+                                </div>
                                 <div>
-                                    <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70 flex items-center gap-2">
-                                        <Sparkles className="w-5 h-5 text-purple-400 fill-purple-400/20" />
-                                        Prompt Weaver Assistant <span className="text-[10px] text-muted-foreground/50 font-mono">v3</span>
-                                    </h2>
-                                    <p className="text-xs text-purple-300/80 font-medium mt-1">
-                                        Auto-fill fields and generate premium e-commerce prompts
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                    <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Online</span>
-                                </div>
-                            </div>
-
-                            {/* CHIPS */}
-                            <div className="flex flex-wrap gap-2 relative z-10">
-                                {["Amazon packshot", "Lifestyle skincare", "Minimal studio", "Neon luxury", "Bold product ad"].map((chip) => (
-                                    <button
-                                        key={chip}
-                                        onClick={() => setAssistantInput(chip)}
-                                        className="text-[10px] px-2.5 py-1 rounded-full bg-white/5 border border-white/5 hover:bg-primary/20 hover:border-primary/30 hover:text-primary transition-all cursor-pointer"
-                                    >
-                                        {chip}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* 2. STICKY INPUT */}
-                        <div className="sticky top-24 z-30 group/input">
-                            <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-xl opacity-20 group-hover/input:opacity-40 transition duration-500 blur-sm" />
-                            <div className="relative bg-[#0F0F12] rounded-xl p-1 shadow-2xl border border-white/10">
-                                <Textarea
-                                    placeholder="Describe your product image... e.g. Luxury skincare serum for Instagram Story 9:16"
-                                    value={assistantInput}
-                                    onChange={(e) => setAssistantInput(e.target.value)}
-                                    className="min-h-[80px] w-full resize-none border-0 bg-transparent p-3 text-sm focus-visible:ring-0 placeholder:text-muted-foreground/50"
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter' && !e.shiftKey) {
-                                            e.preventDefault();
-                                            handleAssistantSubmit();
-                                        }
-                                    }}
-                                />
-                                <div className="flex justify-between items-center px-2 pb-2">
-                                    <span className="text-[10px] text-muted-foreground/60 pl-2">Press Enter to generate</span>
-                                    <Button
-                                        size="sm"
-                                        onClick={handleAssistantSubmit}
-                                        disabled={loading || !assistantInput.trim()}
-                                        className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-500/20 border-0 h-8 px-4 rounded-lg font-medium text-xs transition-all hover:scale-105 active:scale-95"
-                                    >
-                                        {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}
-                                        Auto-Fill & Generate
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 3. CHAT MESSAGES (Scrollable) */}
-                        <div className="min-h-[320px] max-h-[500px] overflow-y-auto custom-scrollbar space-y-4 p-5 rounded-2xl bg-white/[0.03] border border-white/10 shadow-[inset_0_0_22px_rgba(140,90,255,0.10)] flex flex-col">
-                            {chatHistory.length === 0 && !result && (
-                                <div className="flex-1 flex flex-col items-center justify-center text-center p-8 opacity-70 mt-12">
-                                    <Sparkles className="w-10 h-10 mb-4 text-primary/60 animate-pulse" />
-                                    <p className="text-[15px] font-medium mb-1">Assistant ready.</p>
-                                    <p className="text-sm text-muted-foreground">Type a request above to start.</p>
-                                </div>
-                            )}
-                            {chatHistory.map((msg, idx) => (
-                                <motion.div
-                                    key={idx}
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className={cn(
-                                        "flex w-full mb-2",
-                                        msg.role === 'user' ? "justify-end" : "justify-start"
-                                    )}
-                                >
-                                    <div className={cn(
-                                        "max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-md backdrop-blur-md leading-relaxed",
-                                        msg.role === 'user'
-                                            ? "bg-gradient-to-br from-primary via-primary/90 to-purple-600 text-white rounded-tr-sm border border-primary/20"
-                                            : "bg-muted/60 text-foreground/90 rounded-tl-sm border border-white/10 shadow-[0_0_15px_rgba(140,90,255,0.05)]"
-                                    )}>
-                                        {msg.content}
+                                    <h3 className="text-sm font-bold text-white leading-none">AI Architect</h3>
+                                    <div className="flex items-center gap-1.5 mt-1">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                                        <span className="text-[10px] font-medium text-emerald-400">Online & Ready</span>
                                     </div>
-                                </motion.div>
-                            ))}
-                            {loading && <AssistantTypingIndicator />}
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/10 hover:border-primary/30 transition-colors">
+                                    <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400/20" />
+                                    <span className="text-xs font-mono font-medium text-slate-300">
+                                        <span className="text-white">48</span>/50
+                                    </span>
+                                </div>
+                                <div className="px-2 py-0.5 rounded border border-purple-500/30 bg-purple-500/10 hidden sm:block">
+                                    <span className="text-[9px] font-bold uppercase tracking-wider text-purple-300">PRO</span>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* DIVIDER */}
-                        <div className="border-t border-white/10 pb-4" />
+                        {/* 2. CHAT & INPUT AREA */}
+                        <div className="relative group/chat">
+                            {/* Neon Glow underlay */}
+                            <div className="absolute -inset-0.5 bg-gradient-to-b from-purple-500/20 to-transparent rounded-2xl blur-xl opacity-50 group-hover/chat:opacity-75 transition duration-1000" />
 
-                        {/* 4. OUTPUT RESULT (Bottom) */}
-                        <div className="h-auto min-h-[300px] mt-4 flex flex-col">
+                            <div className="relative bg-[#0F0F12]/80 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden shadow-2xl flex flex-col">
+
+                                {/* A. Suggestion Chips */}
+                                <div className="p-4 border-b border-white/5 bg-white/[0.02]">
+                                    <div className="flex flex-wrap gap-2">
+                                        {["Amazon packshot", "Lifestyle skincare", "Minimal studio", "Neon luxury", "Bold product ad"].map((chip) => (
+                                            <button
+                                                key={chip}
+                                                onClick={() => {
+                                                    setAssistantInput(chip);
+                                                    // Trigger functionality on next tick to ensure state update
+                                                    setTimeout(() => handleAssistantSubmit(), 0);
+                                                }}
+                                                className="group relative text-[10px] font-medium px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-primary/10 hover:border-primary/40 hover:text-white transition-all duration-300 hover:scale-105 active:scale-95 overflow-hidden"
+                                            >
+                                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                                                {chip}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* B. Chat History */}
+                                <div className="min-h-[280px] max-h-[400px] overflow-y-auto custom-scrollbar p-5 space-y-5 bg-[#0A0A0B]">
+                                    {chatHistory.length === 0 && !result && (
+                                        <div className="flex flex-col items-center justify-center text-center p-8 mt-4">
+                                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-white/5 to-transparent border border-white/5 flex items-center justify-center mb-4 shadow-[0_0_30px_-10px_rgba(124,58,237,0.3)]">
+                                                <Sparkles className="w-8 h-8 text-primary/40" />
+                                            </div>
+                                            <h4 className="text-sm font-medium text-white/80">How can I help you?</h4>
+                                            <p className="text-xs text-muted-foreground mt-1 max-w-[200px]">
+                                                Describe your product or upload an image to get started.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    <AnimatePresence>
+                                        {chatHistory.map((msg, idx) => (
+                                            <motion.div
+                                                key={idx}
+                                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                className={cn(
+                                                    "flex w-full",
+                                                    msg.role === 'user' ? "justify-end" : "justify-start"
+                                                )}
+                                            >
+                                                <div className="flex flex-col gap-1 max-w-[85%]">
+                                                    <div className={cn(
+                                                        "px-5 py-3.5 text-sm shadow-lg backdrop-blur-md whitespace-pre-wrap leading-relaxed relative overflow-hidden",
+                                                        msg.role === 'user'
+                                                            ? "bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] text-white rounded-2xl rounded-tr-none border border-white/10"
+                                                            : "bg-[#18181B] text-slate-300 rounded-2xl rounded-tl-none border border-white/5"
+                                                    )}>
+                                                        {/* Shimmer effect for user message */}
+                                                        {msg.role === 'user' && (
+                                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+                                                        )}
+                                                        {msg.content}
+                                                    </div>
+                                                    <div className={cn("text-[9px] text-muted-foreground/40 flex items-center gap-1", msg.role === 'user' ? "justify-end pr-1" : "justify-start pl-1")}>
+                                                        <Clock className="w-2.5 h-2.5" />
+                                                        <span>Today</span>
+                                                    </div>
+                                                </div>
+                                            </motion.div>
+                                        ))}
+                                    </AnimatePresence>
+                                    {loading && (
+                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
+                                            <div className="bg-[#18181B] rounded-2xl rounded-tl-none px-4 py-3 border border-white/5 flex items-center gap-2 shadow-lg">
+                                                <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                                                <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                                                <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" />
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </div>
+
+                                {/* C. Input Area */}
+                                <div className="p-3 bg-[#0F0F12] border-t border-white/5 relative z-20">
+                                    <div className={cn(
+                                        "relative rounded-xl border bg-black/40 transition-all duration-300 flex items-center p-1.5",
+                                        "border-white/10 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20 focus-within:bg-black/60"
+                                    )}>
+                                        <Textarea
+                                            placeholder="Imagine something amazing..."
+                                            value={assistantInput}
+                                            onChange={(e) => setAssistantInput(e.target.value)}
+                                            className="min-h-[44px] w-full resize-none border-0 bg-transparent py-2.5 px-3 text-sm focus-visible:ring-0 placeholder:text-muted-foreground/40"
+                                            rows={1}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && !e.shiftKey) {
+                                                    e.preventDefault();
+                                                    handleAssistantSubmit();
+                                                }
+                                            }}
+                                        />
+                                        <Button
+                                            size="icon"
+                                            onClick={handleAssistantSubmit}
+                                            disabled={loading || !assistantInput.trim()}
+                                            className={cn(
+                                                "h-9 w-9 shrink-0 rounded-lg transition-all duration-300",
+                                                !assistantInput.trim()
+                                                    ? "bg-white/5 text-muted-foreground"
+                                                    : "bg-primary text-white shadow-[0_0_15px_-5px_#7c3aed] hover:scale-105 active:scale-95"
+                                            )}
+                                        >
+                                            {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ChevronRight className="w-5 h-5" />}
+                                        </Button>
+                                    </div>
+                                    <div className="flex justify-center mt-2 pb-1">
+                                        <div className="text-[10px] text-muted-foreground/40 flex items-center gap-1.5">
+                                            <Cpu className="w-3 h-3" />
+                                            <span>Powered by Gemini 1.5 Flash</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 3. GENERATE BUTTON (New) */}
+                        <Button
+                            onClick={handleGenerate}
+                            className={cn(
+                                "w-full h-12 rounded-xl text-base font-semibold shadow-2xl transition-all duration-500 bg-gradient-to-r from-primary via-purple-600 to-indigo-600 hover:brightness-110",
+                                "border border-white/20 relative overflow-hidden group/gen"
+                            )}
+                            disabled={loading}
+                        >
+                            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover/gen:translate-y-0 transition-transform duration-500" />
+                            {loading ? (
+                                <span className="flex items-center gap-2">
+                                    <RefreshCw className="w-4 h-4 animate-spin" /> Generating Premium Prompt...
+                                </span>
+                            ) : (
+                                <span className="flex items-center gap-2 relative z-10">
+                                    <Sparkles className="w-4 h-4 fill-white/20" /> Generate Final Prompt
+                                </span>
+                            )}
+                        </Button>
+
+                        <div className="border-t border-white/5 my-2" />
+
+                        {/* 4. OUTPUT RESULT (Structured) */}
+                        <AnimatePresence mode="wait">
                             {result ? (
                                 <motion.div
                                     key="result"
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.98 }}
-                                    className={cn(THEME.glassCard, "flex-1 overflow-hidden flex flex-col shadow-2xl border-primary/20 rounded-xl relative")}
+                                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.9 }}
+                                    className="rounded-xl border border-primary/20 bg-[#09090b] shadow-2xl overflow-hidden"
                                 >
-                                    {/* Soft Glow Border */}
-                                    <div className="absolute inset-0 border border-primary/20 rounded-xl pointer-events-none z-20" />
+                                    <div className="flex items-center justify-between px-4 py-3 bg-white/5 border-b border-white/5">
+                                        <div className="flex items-center gap-2">
+                                            <LayoutTemplate className="w-4 h-4 text-primary" />
+                                            <span className="text-xs font-bold text-white tracking-widest uppercase">Output</span>
+                                        </div>
+                                        <div className="flex gap-1">
+                                            <Button size="icon" variant="ghost" className="h-7 w-7 hover:bg-white/10" onClick={() => copyToClipboard(result.text, false)}>
+                                                <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                                            </Button>
+                                            <Button size="icon" variant="ghost" className="h-7 w-7 hover:bg-white/10" onClick={() => copyToClipboard(result.json, true)}>
+                                                <Code2 className="w-3.5 h-3.5 text-muted-foreground" />
+                                            </Button>
+                                        </div>
+                                    </div>
 
-                                    <Tabs defaultValue="text" className="w-full h-auto flex flex-col">
-                                        <div className="border-b border-white/5 bg-background/40 px-3 py-2 backdrop-blur-sm flex justify-between items-center">
-                                            <TabsList className="bg-transparent border-0 p-0 h-auto gap-2">
-                                                <TabsTrigger value="text" className="data-[state=active]:bg-primary/20 h-7 text-[10px] px-3 rounded-full">PROMPT</TabsTrigger>
-                                                <TabsTrigger value="json" className="data-[state=active]:bg-primary/20 h-7 text-[10px] px-3 rounded-full">JSON SPEC</TabsTrigger>
-                                            </TabsList>
-                                            <div className="flex gap-2">
-                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => copyToClipboard(result.text, false)}>
-                                                    <Copy className="w-3.5 h-3.5" />
-                                                </Button>
+                                    <div className="divide-y divide-white/5">
+                                        {/* Extracted Fields Summary (Mocked via logic availability) */}
+                                        <div className="px-5 py-4 bg-[#0F0F12]">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-[10px] uppercase font-bold text-emerald-400 flex items-center gap-1.5">
+                                                    <Check className="w-3 h-3" /> Extracted Fields
+                                                </span>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {platform && <span className="text-[10px] px-2 py-0.5 bg-white/5 border border-white/10 rounded">{platform}</span>}
+                                                {aspectRatio && <span className="text-[10px] px-2 py-0.5 bg-white/5 border border-white/10 rounded">{aspectRatio}</span>}
+                                                {style && <span className="text-[10px] px-2 py-0.5 bg-white/5 border border-white/10 rounded truncate max-w-[120px]">{style}</span>}
                                             </div>
                                         </div>
 
-                                        <div className="relative h-auto min-h-[300px] bg-[#09090b]">
-                                            <TabsContent value="text" className="m-0 h-full">
-                                                <div className="h-full w-full p-4 font-mono text-xs leading-relaxed text-slate-300 whitespace-pre-wrap break-words border-0 bg-transparent" style={{ fontFamily: '"Geist Mono", monospace' }}>
-                                                    {result.text}
-                                                </div>
-                                            </TabsContent>
-                                            <TabsContent value="json" className="m-0 h-full">
-                                                <pre className="h-full w-full overflow-auto p-4 text-[10px] font-mono text-emerald-400 leading-relaxed custom-scrollbar whitespace-pre-wrap break-all">
-                                                    {result.json}
-                                                </pre>
-                                            </TabsContent>
+                                        {/* Main Prompt */}
+                                        <div className="p-5 font-mono text-xs leading-relaxed text-slate-300 relative group/prompt">
+                                            <div className="absolute top-2 right-2 opacity-0 group-hover/prompt:opacity-100 transition-opacity">
+                                                <span className="text-[9px] text-muted-foreground bg-black/80 px-1.5 py-0.5 rounded">PROMPT</span>
+                                            </div>
+                                            {result.text}
                                         </div>
-                                    </Tabs>
+
+                                        {/* Negative Prompt */}
+                                        <div className="p-4 bg-red-500/5">
+                                            <div className="mb-1 flex items-center gap-2">
+                                                <span className="text-[10px] font-bold text-red-400 uppercase">Negative Prompt</span>
+                                            </div>
+                                            <p className="text-[10px] text-red-200/60 font-mono leading-relaxed line-clamp-2 hover:line-clamp-none transition-all">
+                                                {JSON.parse(result.json).negative_prompt || "N/A"}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="px-4 py-2 bg-black/40 border-t border-white/5 flex justify-between items-center">
+                                        <span className="text-[10px] text-muted-foreground">Approx. 45 tokens</span>
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-6 text-[10px] hover:text-primary hover:bg-primary/10"
+                                            onClick={handleGenerate}
+                                        >
+                                            <RefreshCw className="w-3 h-3 mr-1.5" /> Regenerate
+                                        </Button>
+                                    </div>
                                 </motion.div>
                             ) : (
-                                // Placeholder for visual balance
-                                <div className="h-32 rounded-xl border border-dashed border-white/10 bg-white/[0.02] flex items-center justify-center">
-                                    <span className="text-xs text-muted-foreground/30">Output will appear here</span>
+                                <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-8 flex flex-col items-center justify-center text-center opacity-50 hover:opacity-80 transition-opacity duration-500">
+                                    <Layers className="w-8 h-8 text-muted-foreground/30 mb-3" />
+                                    <p className="text-xs font-medium text-muted-foreground">Generated prompt will appear here</p>
                                 </div>
                             )}
-                        </div>
+                        </AnimatePresence>
+
                     </div>
 
                 </div>

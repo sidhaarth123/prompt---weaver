@@ -20,7 +20,8 @@ import {
   ChevronDown,
   LogOut,
   User,
-  AlertCircle
+  AlertCircle,
+  Megaphone
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/theme";
@@ -329,6 +330,13 @@ export default function Navbar() {
                 <LayoutTemplate className="h-4 w-4" />
                 Website
               </Link>
+              <Link
+                to="/ad"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+              >
+                <Megaphone className="h-4 w-4" />
+                Ad
+              </Link>
 
               {/* Library/History */}
               <Link
@@ -493,6 +501,14 @@ export default function Navbar() {
                 >
                   <LayoutTemplate className="h-4 w-4" />
                   Website Generator
+                </Link>
+                <Link
+                  to="/ad"
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2 flex items-center gap-2"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <Megaphone className="h-4 w-4" />
+                  Ad Generator
                 </Link>
                 <Link
                   to="/library"

@@ -18,6 +18,7 @@ const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const BannerGenerator = lazy(() => import("./pages/BannerGenerator"));
 const ImageGenerator = lazy(() => import("./pages/ImageGenerator"));
 const WebsiteGenerator = lazy(() => import("./pages/WebsiteGenerator"));
+const AdGenerator = lazy(() => import("./pages/AdGenerator"));
 const VideoGenerator = lazy(() => import("./pages/VideoGenerator"));
 const HistoryPage = lazy(() => import("./pages/History"));
 const Library = lazy(() => import("./pages/Library"));
@@ -103,6 +104,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <WebsiteGenerator />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/ad"
+                element={
+                  <ProtectedRoute>
+                    <AdGenerator />
                   </ProtectedRoute>
                 }
               />
