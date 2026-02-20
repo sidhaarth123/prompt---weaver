@@ -1,10 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export interface WebhookResponse {
-    success: boolean;
+import type { ApiResponse } from "@/lib/schemas/workflow";
+
+export interface ImageAssistantData {
     ready?: boolean;
-    error?: string;
-    message?: string;
     questions?: string[];
     final?: any;
     prompt_package?: {
@@ -13,6 +12,8 @@ export interface WebhookResponse {
     };
     remaining_credits?: number;
 }
+
+export type WebhookResponse = ApiResponse<ImageAssistantData>;
 
 /**
  * Clean production helper to communicate with n8n image prompt workflow.
@@ -28,8 +29,7 @@ export async function callImagePromptWebhook(message: string): Promise<WebhookRe
         if (!token) {
             return {
                 success: false,
-                error: "UNAUTHORIZED",
-                message: "Please login again to continue."
+                error: { code: "UNAUTHORIZED", message: "Please login again to continue." }
             };
         }
 
@@ -39,8 +39,7 @@ export async function callImagePromptWebhook(message: string): Promise<WebhookRe
             console.error("VITE_IMAGE_PROMPT_WEBHOOK_URL is not defined in environment variables.");
             return {
                 success: false,
-                error: "CONFIG_MISSING",
-                message: "System configuration error. Please contact support."
+                error: { code: "CONFIG_MISSING", message: "System configuration error. Please contact support." }
             };
         }
 
@@ -57,10 +56,16 @@ export async function callImagePromptWebhook(message: string): Promise<WebhookRe
 
         // 5. Handle Status Codes 
         if (response.status === 401) {
-            return { success: false, error: "UNAUTHORIZED", message: "Session expired, please login again." };
+            return {
+                success: false,
+                error: { code: "UNAUTHORIZED", message: "Session expired, please login again." }
+            };
         }
         if (response.status === 402) {
-            return { success: false, error: "NO_CREDITS", message: "No credits remaining." };
+            return {
+                success: false,
+                error: { code: "NO_CREDITS", message: "No credits remaining." }
+            };
         }
 
         // 6. Parse JSON
@@ -69,24 +74,28 @@ export async function callImagePromptWebhook(message: string): Promise<WebhookRe
         if (!response.ok) {
             return {
                 success: false,
-                error: "REQUEST_FAILED",
-                message: resultData?.message || "Request failed."
+                error: {
+                    code: "REQUEST_FAILED",
+                    message: resultData?.message || "Request failed."
+                }
             };
         }
 
-        // Return the successful data payload
+        // Return the successful data payload wrapped in 'data'
         return {
             success: true,
-            ...resultData
+            data: resultData
         };
 
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Webhook Call Error:", error);
         return {
             success: false,
-            error: "NETWORK_ERROR",
-            message: "Something went wrong. Please try again."
+            error: {
+                code: "NETWORK_ERROR",
+                message: error.message || "Something went wrong. Please try again."
+            }
         };
     }
 }

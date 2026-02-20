@@ -7,25 +7,24 @@ import type { GenerateResponse } from "@/lib/schemas/generateResponse";
  * Calls our server API which then communicates with n8n
  */
 
+import type { ApiResponse } from "@/lib/schemas/workflow";
+
 export interface GeneratePromptInput {
   type: "image" | "video" | "website";
   inputs: Record<string, any>;
 }
 
-export interface GeneratePromptResponse {
+export interface WorkflowData {
   requestId: string;
   status: "succeeded" | "failed" | "queued" | "running";
-  result?: {
-    jsonPrompt?: Record<string, any>;
-    blueprint?: Record<string, any>;
-    humanReadable?: string;
-  };
-  error?: {
-    code: string;
-    message: string;
-  };
+  jsonPrompt?: Record<string, any>;
+  blueprint?: Record<string, any>;
+  humanReadable?: string;
   cached?: boolean;
+  type?: "image" | "video" | "website";
 }
+
+export type GeneratePromptResponse = ApiResponse<WorkflowData>;
 
 /**
  * Generate prompt via secure server workflow
@@ -53,11 +52,11 @@ export async function generatePrompt(
     body: JSON.stringify(input),
   });
 
-  const data = await response.json();
+  const data: GeneratePromptResponse = await response.json();
 
-  if (!response.ok) {
+  if (!response.ok || !data.success) {
     throw new Error(
-      data.message || data.error || `Request failed with status ${response.status}`
+      data.error?.message || `Request failed with status ${response.status}`
     );
   }
 
@@ -92,11 +91,11 @@ export async function generatePromptWithAI(
     body: JSON.stringify(request),
   });
 
-  const data = await response.json();
+  const data: GenerateResponse = await response.json();
 
-  if (!response.ok) {
+  if (!response.ok || !data.success) {
     throw new Error(
-      data.message || data.error || `Request failed with status ${response.status}`
+      data.error?.message || `Request failed with status ${response.status}`
     );
   }
 
@@ -123,11 +122,11 @@ export async function getWorkflowStatus(requestId: string): Promise<GenerateProm
     },
   });
 
-  const data = await response.json();
+  const data: GeneratePromptResponse = await response.json();
 
-  if (!response.ok) {
+  if (!response.ok || !data.success) {
     throw new Error(
-      data.message || data.error || `Request failed with status ${response.status}`
+      data.error?.message || `Request failed with status ${response.status}`
     );
   }
 
@@ -147,7 +146,7 @@ export async function pollWorkflowUntilComplete(
   while (Date.now() - startTime < maxWaitMs) {
     const status = await getWorkflowStatus(requestId);
 
-    if (status.status === "succeeded" || status.status === "failed") {
+    if (status.data?.status === "succeeded" || status.data?.status === "failed") {
       return status;
     }
 

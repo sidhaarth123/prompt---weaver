@@ -22,14 +22,20 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Only allow GET
     if (req.method !== "GET") {
-        return res.status(405).json({ error: "Method not allowed" });
+        return res.status(405).json({
+            success: false,
+            error: { code: "method_not_allowed", message: "Method not allowed" }
+        });
     }
 
     try {
         // Validate Supabase session
         const authHeader = req.headers.authorization as string;
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
-            return res.status(401).json({ error: "Unauthorized", message: "Missing auth token" });
+            return res.status(401).json({
+                success: false,
+                error: { code: "unauthorized", message: "Missing auth token" }
+            });
         }
 
         const token = authHeader.replace("Bearer ", "");
@@ -39,7 +45,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         } = await supabase.auth.getUser(token);
 
         if (authError || !user) {
-            return res.status(401).json({ error: "Unauthorized", message: "Invalid session" });
+            return res.status(401).json({
+                success: false,
+                error: { code: "unauthorized", message: "Invalid session" }
+            });
         }
 
         // Get requestId from query
@@ -47,8 +56,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (!requestId || typeof requestId !== "string") {
             return res.status(400).json({
-                error: "Bad request",
-                message: "requestId query parameter is required",
+                success: false,
+                error: { code: "bad_request", message: "requestId query parameter is required" }
             });
         }
 
@@ -63,38 +72,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (fetchError) {
             console.error("[workflow/status] Database error:", fetchError);
             return res.status(500).json({
-                error: "Database error",
-                message: "Failed to fetch workflow status",
+                success: false,
+                error: { code: "database_error", message: "Failed to fetch workflow status" }
             });
         }
 
         if (!workflowRun) {
             return res.status(404).json({
-                error: "Not found",
-                message: "Workflow run not found",
+                success: false,
+                error: { code: "not_found", message: "Workflow run not found" }
             });
         }
 
-        // Return status
+        // Return standardized status
         return res.status(200).json({
-            requestId: workflowRun.request_id,
-            status: workflowRun.status,
-            type: workflowRun.type,
-            result: workflowRun.output_json,
+            success: true,
+            data: {
+                requestId: workflowRun.request_id,
+                status: workflowRun.status,
+                type: workflowRun.type,
+                jsonPrompt: workflowRun.output_json?.jsonPrompt,
+                blueprint: workflowRun.output_json?.blueprint,
+                humanReadable: workflowRun.output_json?.humanReadable,
+                createdAt: workflowRun.created_at,
+                updatedAt: workflowRun.updated_at,
+            },
             error: workflowRun.error_code
                 ? {
                     code: workflowRun.error_code,
-                    message: workflowRun.error_message,
+                    message: workflowRun.error_message || "Workflow failed",
                 }
-                : null,
-            createdAt: workflowRun.created_at,
-            updatedAt: workflowRun.updated_at,
+                : undefined,
         });
     } catch (error: any) {
         console.error("[workflow/status] Unexpected error:", error);
         return res.status(500).json({
-            error: "Internal server error",
-            message: error.message || "Unknown error occurred",
+            success: false,
+            error: { code: "internal_server_error", message: error.message || "Unknown error occurred" }
         });
     }
 }

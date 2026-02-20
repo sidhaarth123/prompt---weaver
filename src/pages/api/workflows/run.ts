@@ -40,14 +40,20 @@ const MAX_RETRIES = 3;
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Only allow POST
     if (req.method !== "POST") {
-        return res.status(405).json({ error: "Method not allowed" });
+        return res.status(405).json({
+            success: false,
+            error: { code: "method_not_allowed", message: "Method not allowed" }
+        });
     }
 
     try {
         // 1. Validate Supabase session
         const authHeader = req.headers.authorization as string;
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
-            return res.status(401).json({ error: "Unauthorized", message: "Missing auth token" });
+            return res.status(401).json({
+                success: false,
+                error: { code: "unauthorized", message: "Missing auth token" }
+            });
         }
 
         const token = authHeader.replace("Bearer ", "");
@@ -58,7 +64,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (authError || !user) {
             console.error("[workflow/run] Auth error:", authError);
-            return res.status(401).json({ error: "Unauthorized", message: "Invalid session" });
+            return res.status(401).json({
+                success: false,
+                error: { code: "unauthorized", message: "Invalid session" }
+            });
         }
 
         // 2. Parse and validate request body
@@ -76,8 +85,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!validationResult.success) {
             console.error("[workflow/run] Validation error:", validationResult.error);
             return res.status(400).json({
-                error: "Invalid request",
-                message: "Payload validation failed",
+                success: false,
+                error: { code: "invalid_request", message: "Payload validation failed" },
                 details: validationResult.error.errors,
             });
         }
@@ -96,10 +105,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (existingRun) {
             console.log(`[workflow/run] Returning cached result for ${requestId}`);
             return res.status(200).json({
-                requestId: existingRun.request_id,
-                status: existingRun.status,
-                result: existingRun.output_json,
-                cached: true,
+                success: true,
+                data: {
+                    requestId: existingRun.request_id,
+                    status: existingRun.status,
+                    jsonPrompt: existingRun.output_json?.jsonPrompt,
+                    blueprint: existingRun.output_json?.blueprint,
+                    humanReadable: existingRun.output_json?.humanReadable,
+                    cached: true,
+                }
             });
         }
 
@@ -115,8 +129,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (insertError) {
             console.error("[workflow/run] Failed to insert workflow_run:", insertError);
             return res.status(500).json({
-                error: "Database error",
-                message: "Failed to create workflow run",
+                success: false,
+                error: { code: "database_error", message: "Failed to create workflow run" }
             });
         }
 
@@ -172,9 +186,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     .eq("request_id", requestId);
 
                 return res.status(n8nResponse.status).json({
-                    error: "Workflow execution failed",
-                    message: `n8n returned ${n8nResponse.status}`,
-                    requestId,
+                    success: false,
+                    error: {
+                        code: `n8n_${n8nResponse.status}`,
+                        message: `Workflow execution failed with status ${n8nResponse.status}`
+                    },
+                    data: { requestId }
                 });
             }
 
@@ -196,9 +213,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     .eq("request_id", requestId);
 
                 return res.status(500).json({
-                    error: "Invalid workflow response",
-                    message: "n8n response validation failed",
-                    requestId,
+                    success: false,
+                    error: { code: "invalid_response", message: "n8n response validation failed" },
+                    data: { requestId }
                 });
             }
 
@@ -218,8 +235,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             console.log(`[workflow/run] Success for ${requestId}, status: ${validatedResponse.status}`);
 
-            // 9. Return response to client
-            return res.status(200).json(validatedResponse);
+            // 9. Return standardized response to client
+            return res.status(200).json({
+                success: true,
+                data: {
+                    requestId: validatedResponse.requestId,
+                    status: validatedResponse.status,
+                    jsonPrompt: validatedResponse.data?.jsonPrompt,
+                    blueprint: validatedResponse.data?.blueprint,
+                    humanReadable: validatedResponse.data?.humanReadable,
+                }
+            });
         } catch (fetchError: any) {
             console.error("[workflow/run] n8n fetch error:", fetchError);
 
@@ -235,16 +261,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .eq("request_id", requestId);
 
             return res.status(503).json({
-                error: "Service unavailable",
-                message: "Could not connect to workflow service",
-                requestId,
+                success: false,
+                error: { code: "service_unavailable", message: "Could not connect to workflow service" },
+                data: { requestId }
             });
         }
     } catch (error: any) {
         console.error("[workflow/run] Unexpected error:", error);
         return res.status(500).json({
-            error: "Internal server error",
-            message: error.message || "Unknown error occurred",
+            success: false,
+            error: { code: "internal_server_error", message: error.message || "Unknown error occurred" }
         });
     }
 }

@@ -20,9 +20,10 @@ export const JsonPromptSchema = z.object({
 export type JsonPrompt = z.infer<typeof JsonPromptSchema>;
 
 export const GenerateResponseSchema = z.object({
-    requestId: z.string().uuid(),
-    status: z.enum(["succeeded", "failed"]),
-    result: z.object({
+    success: z.boolean(),
+    data: z.object({
+        requestId: z.string().uuid(),
+        status: z.enum(["succeeded", "failed"]),
         jsonPrompt: JsonPromptSchema,
         humanReadable: z.string().min(1, "Human readable text cannot be empty"),
     }).optional(),

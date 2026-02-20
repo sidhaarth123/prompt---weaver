@@ -15,25 +15,48 @@ export const WorkflowRequestSchema = z.object({
 export type WorkflowRequest = z.infer<typeof WorkflowRequestSchema>;
 
 /**
- * Workflow Response Schema
- * Strict contract for n8n responses
+ * Universal API Response Schema
+ */
+export const ApiResponseSchema = z.object({
+    success: z.boolean(),
+    data: z.any().optional(),
+    error: z.object({
+        code: z.string(),
+        message: z.string(),
+    }).optional(),
+});
+
+/**
+ * Generic API Response type
+ */
+export type ApiResponse<T = any> = {
+    success: boolean;
+    data?: T;
+    error?: {
+        code: string;
+        message: string;
+    };
+};
+
+/**
+ * Workflow Response Schema (Standardized)
+ * Strict contract for n8n/workflow responses
  */
 export const WorkflowResponseSchema = z.object({
-    requestId: z.string().uuid(),
-    status: z.enum(["succeeded", "failed"]),
-    result: z
-        .object({
-            jsonPrompt: z.record(z.any()).optional(),
-            blueprint: z.record(z.any()).optional(),
-            humanReadable: z.string().optional(),
-        })
-        .optional(),
-    error: z
-        .object({
-            code: z.string(),
-            message: z.string(),
-        })
-        .optional(),
+    success: z.boolean(),
+    data: z.object({
+        requestId: z.string().uuid(),
+        status: z.enum(["succeeded", "failed", "queued", "running"]),
+        jsonPrompt: z.record(z.any()).optional(),
+        blueprint: z.record(z.any()).optional(),
+        humanReadable: z.string().optional(),
+        type: z.enum(["image", "video", "website"]).optional(),
+        cached: z.boolean().optional(),
+    }).optional(),
+    error: z.object({
+        code: z.string(),
+        message: z.string(),
+    }).optional(),
 });
 
 export type WorkflowResponse = z.infer<typeof WorkflowResponseSchema>;

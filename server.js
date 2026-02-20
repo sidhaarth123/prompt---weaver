@@ -16,9 +16,11 @@ app.use(express.json());
 
 app.get("/health", (req, res) => {
     res.json({
-        ok: true,
-        message: "Prompt Assistant Server running",
-        timestamp: new Date().toISOString()
+        success: true,
+        data: {
+            message: "Prompt Assistant Server running",
+            timestamp: new Date().toISOString()
+        }
     });
 });
 
@@ -66,7 +68,10 @@ app.post('/api/prompt-assistant', async (req, res) => {
 
         if (!GEMINI_API_KEY) {
             console.error("GEMINI_API_KEY is missing");
-            return res.status(500).json({ ok: false, error: "Server configuration error provided key is missing" });
+            return res.status(500).json({
+                success: false,
+                error: { code: "server_config_error", message: "Server configuration error provided key is missing" }
+            });
         }
 
         const systemPrompt = `
@@ -200,15 +205,18 @@ Rules:
         }
 
         res.json({
-            ok: true,
+            success: true,
             data: parsedJson
         });
 
     } catch (error) {
         console.error("Server Error:", error);
         res.status(500).json({
-            ok: false,
-            error: error instanceof Error ? error.message : "Internal server error"
+            success: false,
+            error: {
+                code: "api_error",
+                message: error instanceof Error ? error.message : "Internal server error"
+            }
         });
     }
 });
@@ -271,7 +279,10 @@ app.post('/api/video-prompt-assistant', async (req, res) => {
 
         if (!GEMINI_API_KEY) {
             console.error("GEMINI_API_KEY is missing");
-            return res.status(500).json({ ok: false, error: "Server configuration error provided key is missing" });
+            return res.status(500).json({
+                success: false,
+                error: { code: "server_config_error", message: "Server configuration error provided key is missing" }
+            });
         }
 
         const systemPrompt = `
@@ -399,15 +410,18 @@ Rules:
         }
 
         res.json({
-            ok: true,
+            success: true,
             data: parsedJson
         });
 
     } catch (error) {
         console.error("Server Error:", error);
         res.status(500).json({
-            ok: false,
-            error: error instanceof Error ? error.message : "Internal server error"
+            success: false,
+            error: {
+                code: "api_error",
+                message: error instanceof Error ? error.message : "Internal server error"
+            }
         });
     }
 });
@@ -465,7 +479,10 @@ app.post('/api/website-prompt-assistant', async (req, res) => {
 
         if (!GEMINI_API_KEY) {
             console.error("GEMINI_API_KEY is missing");
-            return res.status(500).json({ ok: false, error: "Server configuration error provided key is missing" });
+            return res.status(500).json({
+                success: false,
+                error: { code: "server_config_error", message: "Server configuration error provided key is missing" }
+            });
         }
 
         const systemPrompt = `

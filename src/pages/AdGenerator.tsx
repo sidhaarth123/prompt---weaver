@@ -341,10 +341,10 @@ export default function AdGenerator() {
 
         const json = await res.json();
 
-        if (!res.ok || !json.ok) {
+        if (!res.ok || !json.success) {
             toast({
                 title: "Assistant Error",
-                description: json.error || "Failed to generate ad.",
+                description: json.error?.message || "Failed to generate ad.",
                 variant: "destructive",
             });
             return;

@@ -77,9 +77,8 @@ export default function Generator() {
 
     setLoading(true);
     try {
-      const data = (await generatePrompt({
+      const res = await generatePrompt({
         type: form.outputType,
-        useCase: form.useCase,
         inputs: {
           subject: form.subject,
           style: form.style,
@@ -91,15 +90,15 @@ export default function Generator() {
           realismLevel: form.realismLevel,
           negativePrompt: form.negativePrompt,
         },
-      })) as PromptResult;
+      });
 
-      if (data?.error) {
-        throw new Error(data.error);
+      if (!res.success || !res.data) {
+        throw new Error(res.error?.message || "Generation failed");
       }
 
       setResult({
-        jsonPrompt: data.jsonPrompt,
-        explanation: data.explanation,
+        jsonPrompt: res.data.jsonPrompt,
+        explanation: res.data.humanReadable || "",
       });
 
       toast({ title: "Prompt generated!" });

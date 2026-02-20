@@ -10,682 +10,207 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import { THEME, cn } from "@/lib/theme";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Sparkles,
+    LayoutTemplate,
     Code2,
     Copy,
     Check,
     RefreshCw,
     Trash2,
-    Lightbulb,
-    CreditCard,
-    Info,
+    Layers,
     Monitor,
-    Smartphone,
-    Layout,
-    Type,
-    Palette,
-    ShieldCheck,
-    Bot,
-    Send,
-    Zap,
-    MessageSquare,
     ShoppingBag,
-    ArrowUp
+    Target,
+    Zap,
+    AlertCircle,
+    Bot
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-import AssistantTypingIndicator from "@/components/AssistantTypingIndicator";
+import { usePromptWeaverChat } from "@/hooks/usePromptWeaverChat";
+import { PremiumChatbot } from "@/components/PremiumChatbot";
+import { mapBannerResponseToState } from "@/mappers/bannerMapper";
 
 // --- Constants ---
-
-const CATEGORIES = [
-    "Skincare",
-    "Beauty",
-    "Fashion",
-    "Electronics",
-    "Food & Beverage",
-    "Home",
-    "Fitness",
-    "Kids",
-    "Pets",
-    "Other"
-];
-
-const CTAS = [
-    "Shop Now",
-    "Buy Now",
-    "Explore",
-    "Get Offer",
-    "Order Today",
-    "Limited Time"
-];
-
-const PLACEMENTS = [
-    "Website Hero Banner",
-    "Homepage Promo Strip",
-    "Product Page Banner",
-    "Checkout Upsell Banner",
-    "Instagram Story Banner",
-    "Instagram Feed Banner",
-    "Facebook Ad Banner",
-    "Google Display Banner"
-];
-
-const SIZES = [
-    "1920x1080 (Hero)",
-    "1600x900 (Hero)",
-    "1080x1080 (Square)",
-    "1080x1350 (4:5)",
-    "1080x1920 (Story)",
-    "1200x628 (FB Ad)",
-    "300x250 (Display)",
-    "728x90 (Leaderboard)",
-    "970x250 (Billboard)"
-];
-
-const STYLES = [
-    "Luxury Premium",
-    "Minimal Clean",
-    "Bold Gradient",
-    "Glassmorphism",
-    "Modern Product Photography",
-    "Festive Sale",
-    "Neon / Cyber",
-    "Corporate Clean"
-];
-
-const BACKGROUNDS = [
-    "Studio Gradient",
-    "Solid Color",
-    "Lifestyle Scene",
-    "Abstract Shapes",
-    "Pattern",
-    "Bokeh"
-];
-
-const ASSISTANT_SUGGESTIONS = [
-    "Luxury Skincare Sale Banner",
-    "Black Friday Offer",
-    "New Product Launch",
-    "Limited Time Offer",
-    "High-Converting Hero Banner"
-];
-
-type Message = {
-    role: "user" | "assistant";
-    content: string;
-};
+const PLACEMENTS = ["Meta Ad Feed", "Instagram Story", "Google Display Banner", "Shopify Hero", "Email Header", "Twitter/X Post", "LinkedIn Ad"];
+const SIZE_PRESETS = ["1200x628 (Feed)", "1080x1920 (Story)", "300x250 (MREC)", "728x90 (Leaderboard)", "1600x400 (Hero)"];
+const STYLES = ["Minimalist", "Bold Typography", "Luxury / Elegant", "Playful & Bright", "Clean Corporate", "High-Contrast Ad"];
+const BACKGROUND_TYPES = ["Solid Color", "Gradient", "Product Photography", "Stock Lifestyle", "Abstract Shapes", "Blurred Scene"];
 
 export default function BannerGenerator() {
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<{ text: string; json: string } | null>(null);
-    const [copiedText, setCopiedText] = useState(false);
-    const [copiedJson, setCopiedJson] = useState(false);
+    const [touchedByUser, setTouchedByUser] = useState<Record<string, boolean>>({});
 
-    // --- State ---
-
-    // Brief
+    // Form State
     const [brandName, setBrandName] = useState("");
     const [productName, setProductName] = useState("");
-    const [category, setCategory] = useState("");
-    const [targetAudience, setTargetAudience] = useState("");
-    const [offer, setOffer] = useState("");
-    const [cta, setCta] = useState("");
     const [primaryMessage, setPrimaryMessage] = useState("");
-
-    // Format
+    const [cta, setCta] = useState("");
     const [placement, setPlacement] = useState("");
     const [sizePreset, setSizePreset] = useState("");
-    const [safeArea, setSafeArea] = useState(true);
-
-    // Visuals
     const [style, setStyle] = useState("");
     const [backgroundType, setBackgroundType] = useState("");
-    const [brandColors, setBrandColors] = useState("");
-    const [props, setProps] = useState("");
 
-    // Compliance
-    const [noWatermark, setNoWatermark] = useState(true);
-    const [noArtifacts, setNoArtifacts] = useState(true);
-    const [noDistortedLogos, setNoDistortedLogos] = useState(true);
-    const [avoidMisleading, setAvoidMisleading] = useState(true);
-
-    // Assistant Status
-    const [assistantInput, setAssistantInput] = useState("");
-    const [isThinking, setIsThinking] = useState(false);
-    const [chatHistory, setChatHistory] = useState<Message[]>([]);
-    const chatEndRef = useRef<HTMLDivElement>(null);
-
-    // Scroll to bottom of chat
-    useEffect(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [chatHistory, isThinking]);
-
-    // --- Logic ---
-
-    // Helper: Build Prompt String
-    const buildPrompt = (cfg: any) => {
-        return `Design a high-converting e-commerce banner.
-            
-CONTEXT:
-Brand: ${cfg.brandName}
-Product: ${cfg.productName} (${cfg.category})
-Target Audience: ${cfg.targetAudience}
-Main Message: "${cfg.primaryMessage}"
-Offer: ${cfg.offer}
-CTA Button: ${cfg.cta}
-
-FORMAT & TECH:
-Placement: ${cfg.placement}
-Size: ${cfg.sizePreset}
-Safe Area Enforced: ${cfg.safeArea ? "YES" : "NO"}
-
-AESTHETIC:
-Style: ${cfg.style}
-Background: ${cfg.backgroundType}
-Brand Colors: ${cfg.brandColors}
-Props/Elements: ${cfg.props}
-
-QUALITY GUIDELINES:
-- Typography: Ensure high readability, hierarchy with Headline > Subhead > CTA.
-- Layout: Balanced composition, negative space for text overlay.
-- E-commerce Focus: Product should be focal point, high contrast CTA.
-${cfg.noWatermark ? "- No watermarks" : ""}
-${cfg.noArtifacts ? "- No text artifacts" : ""}
-${cfg.noDistortedLogos ? "- No distorted logos" : ""}
-${cfg.avoidMisleading ? "- Authentic product representation" : ""}
-`;
+    const setFieldManually = (field: string, value: any, setter: (val: any) => void) => {
+        setter(value);
+        setTouchedByUser(prev => ({ ...prev, [field]: true }));
     };
 
-    const buildJson = (cfg: any) => {
-        return {
-            brand_name: cfg.brandName,
-            product_name: cfg.productName,
-            category: cfg.category,
-            target_audience: cfg.targetAudience,
-            offer: cfg.offer,
-            cta: cfg.cta,
-            primary_message: cfg.primaryMessage,
-            placement: cfg.placement,
-            size_preset: cfg.sizePreset,
-            safe_area: cfg.safeArea,
-            style: cfg.style,
-            background_type: cfg.backgroundType,
-            brand_colors: cfg.brandColors,
-            props: cfg.props,
-            rules: {
-                no_watermark: cfg.noWatermark,
-                no_artifacts: cfg.noArtifacts,
-                no_distorted_logos: cfg.noDistortedLogos,
-                avoid_misleading: cfg.avoidMisleading
+    const setFieldAuto = (field: string, value: any) => {
+        if (touchedByUser[field]) return;
+        const setters: Record<string, (val: any) => void> = {
+            brandName: setBrandName,
+            productName: setProductName,
+            primaryMessage: setPrimaryMessage,
+            cta: setCta,
+            placement: setPlacement,
+            sizePreset: setSizePreset,
+            style: setStyle,
+            backgroundType: setBackgroundType
+        };
+        const setter = setters[field];
+        if (setter) setter(value);
+    };
+
+    const {
+        chatHistory,
+        isLoading: assistantLoading,
+        credits,
+        errorStatus,
+        sendMessage,
+        clearChat
+    } = usePromptWeaverChat({
+        workflowType: 'banner',
+        onDataReceived: (res) => {
+            if (res.final) {
+                mapBannerResponseToState(res.final, {}, setFieldAuto);
             }
-        };
-    };
+            if (res.prompt_package) {
+                setResult({
+                    text: res.prompt_package.prompt || "Banner generated successfully.",
+                    json: JSON.stringify(res.final, null, 2)
+                });
+            }
+        }
+    });
 
-    const handleGenerate = async (overrides?: any) => {
-        // Current state configuration
-        const currentConfig = {
-            brandName, productName, category, targetAudience, offer, cta, primaryMessage,
-            placement, sizePreset, safeArea,
-            style, backgroundType, brandColors, props,
-            noWatermark, noArtifacts, noDistortedLogos, avoidMisleading
-        };
-
-        const config = { ...currentConfig, ...overrides };
-
-        // Fallback checks (only if manual/no overrides, though assistant might pass empty overrides)
-        if (!overrides && !config.brandName && !config.productName && !config.category) {
-            toast({
-                title: "Missing fields",
-                description: "Please fill in Brand Name, Product Name, and Category.",
-                variant: "destructive",
-            });
+    const handleGenerate = async () => {
+        if (!brandName || !primaryMessage || !placement) {
+            toast({ title: "Missing fields", description: "Fill in Brand, Message, and Placement.", variant: "destructive" });
             return;
         }
-
         setLoading(true);
-        setResult(null);
-
-        // Simulate generation delay
-        setTimeout(() => {
-            const prompt = buildPrompt(config);
-            const jsonSpec = buildJson(config);
-
+        try {
+            const finalPrompt = `Banner Design for ${brandName}: ${productName}\nPlacement: ${placement} (${sizePreset})\nStyle: ${style}\nHeadline: ${primaryMessage}\nCTA: ${cta}`;
             setResult({
-                text: prompt,
-                json: JSON.stringify(jsonSpec, null, 2)
+                text: finalPrompt,
+                json: JSON.stringify({ brandName, productName, primaryMessage, cta, placement, sizePreset, style }, null, 2)
             });
-            setLoading(false);
             toast({ title: "Banner prompt generated!" });
-        }, 1500);
-    };
-
-    const handleClear = () => {
-        setBrandName("");
-        setProductName("");
-        setCategory("");
-        setTargetAudience("");
-        setOffer("");
-        setCta("");
-        setPrimaryMessage("");
-        setPlacement("");
-        setSizePreset("");
-        setSafeArea(true);
-        setStyle("");
-        setBackgroundType("");
-        setBrandColors("");
-        setProps("");
-        setResult(null);
-        setChatHistory([]);
-    };
-
-    const copyToClipboard = async (text: string, isJson: boolean) => {
-        await navigator.clipboard.writeText(text);
-        if (isJson) {
-            setCopiedJson(true);
-            setTimeout(() => setCopiedJson(false), 2000);
-        } else {
-            setCopiedText(true);
-            setTimeout(() => setCopiedText(false), 2000);
+        } finally {
+            setLoading(false);
         }
-        toast({ title: "Copied to clipboard" });
-    };
-
-    // --- Assistant Logic (Client-Side Heuristic) ---
-    const handleAssistantSubmit = async () => {
-        if (!assistantInput.trim()) return;
-
-        const userInput = assistantInput.trim();
-        setAssistantInput("");
-        setChatHistory(prev => [...prev, { role: "user", content: userInput }]);
-        setIsThinking(true);
-
-        // Simulate reading/parsing delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        // 1. Parse Input (Simple Heuristics)
-        const lower = userInput.toLowerCase();
-
-        let overrides: any = {};
-
-        // Category Detection
-        const matchedCategory = CATEGORIES.find(c => lower.includes(c.toLowerCase()));
-        if (matchedCategory) {
-            setCategory(matchedCategory);
-            overrides.category = matchedCategory;
-        }
-
-        // CTA Detection
-        const matchedCTA = CTAS.find(c => lower.includes(c.toLowerCase()));
-        if (matchedCTA) {
-            setCta(matchedCTA);
-            overrides.cta = matchedCTA;
-        }
-
-        // Placement Detection
-        const matchedPlacement = PLACEMENTS.find(p => lower.includes(p.toLowerCase()) || (p.includes("Instagram") && lower.includes("instagram")) || (p.includes("Facebook") && lower.includes("facebook")));
-        if (matchedPlacement) {
-            setPlacement(matchedPlacement);
-            overrides.placement = matchedPlacement;
-        }
-
-        // Style Detection
-        const matchedStyle = STYLES.find(s => lower.includes(s.toLowerCase().split(" ")[0]) || lower.includes("neon") && s.includes("Neon"));
-        if (matchedStyle) {
-            setStyle(matchedStyle);
-            overrides.style = matchedStyle;
-        }
-
-        // Offer Detection
-        if (lower.includes("% off") || lower.includes("sale") || lower.includes("discount")) {
-            let newOffer = "";
-            const percentMatch = lower.match(/(\d+% off)/);
-            if (percentMatch) newOffer = percentMatch[0].toUpperCase();
-            else if (!offer) newOffer = "Special Sale";
-
-            if (newOffer) {
-                setOffer(newOffer);
-                overrides.offer = newOffer;
-            }
-        }
-
-        // Fill gaps if empty (Defaults)
-        if (!brandName) {
-            const def = "YourBrand";
-            setBrandName(def);
-            overrides.brandName = def;
-        }
-        if (!productName) {
-            const def = "Premium Product";
-            setProductName(def);
-            overrides.productName = def;
-        }
-        if (!primaryMessage) {
-            setPrimaryMessage(userInput);
-            overrides.primaryMessage = userInput;
-        }
-
-        // 2. Trigger Generation
-        handleGenerate(overrides);
-
-        // 3. Assistant Response
-        setIsThinking(false);
-        setChatHistory(prev => [...prev, {
-            role: "assistant",
-            content: "I've analyzed your requirements and configured the optimal banner settings. The prompt is ready for generation below."
-        }]);
     };
 
     return (
-        <div className="min-h-screen bg-background font-sans selection:bg-primary/20">
+        <div className="min-h-screen bg-background font-sans">
             <Navbar />
-
-            {/* Ambient Background */}
             <div className="fixed inset-0 pointer-events-none z-0">
-                <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full" />
-                <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-purple-500/5 blur-[120px] rounded-full" />
+                <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-emerald-500/5 blur-[120px] rounded-full" />
+                <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full" />
             </div>
 
             <main className="container relative z-10 mx-auto px-4 pt-24 pb-20">
-                <div className="grid lg:grid-cols-[480px,1fr] xl:grid-cols-[480px,1fr] gap-8 items-start h-full">
-
-                    {/* LEFT PANEL: MANUAL CONTROLS */}
-                    <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-700 h-full overflow-y-auto pb-20">
-                        {/* Header */}
+                <div className="grid lg:grid-cols-[1fr,480px] gap-8 items-start">
+                    <div className="space-y-6">
                         <div className="mb-2">
-                            <h2 className="text-xl font-semibold text-foreground/80 flex items-center gap-2 mb-4">
-                                <Layout className="w-5 h-5 text-primary" />
-                                Banner Controls <span className="text-sm font-normal text-muted-foreground">(Manual)</span>
-                            </h2>
+                            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 mb-4 backdrop-blur-md">
+                                <Sparkles className="w-3.5 h-3.5 text-primary" />
+                                <span className="text-xs font-semibold uppercase tracking-wider text-primary">Banner Engine v1.0</span>
+                            </div>
+                            <h1 className="text-5xl font-bold tracking-tight mb-4 text-white">Banner Prompt Generator</h1>
+                            <p className="text-muted-foreground text-lg max-w-2xl leading-relaxed">Design professional ad banners and shop headers with AI.</p>
                         </div>
 
-                        {/* Card 1: Brand & Offer */}
-                        <div className="p-5 rounded-[18px] border border-white/[0.08] bg-white/[0.02] shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300">
-                            <div className="flex items-center gap-3 mb-4">
+                        <section className={cn(THEME.glassCard, "p-6 space-y-6")}>
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+                                    <ShoppingBag className="w-5 h-5" />
+                                </div>
+                                <h3 className="font-semibold text-lg">Banner Brief</h3>
+                            </div>
+                            <div className="grid sm:grid-cols-2 gap-5">
+                                <div className="space-y-2">
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Brand Name</Label>
+                                    <Input placeholder="e.g. Aura" value={brandName} onChange={e => setFieldManually('brandName', e.target.value, setBrandName)} className="bg-background/40 border-white/10" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Product</Label>
+                                    <Input placeholder="e.g. Silk Mask" value={productName} onChange={e => setFieldManually('productName', e.target.value, setProductName)} className="bg-background/40 border-white/10" />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Headline Message</Label>
+                                <Input placeholder="Main hook for the banner..." value={primaryMessage} onChange={e => setFieldManually('primaryMessage', e.target.value, setPrimaryMessage)} className="bg-background/40 border-white/10" />
+                            </div>
+                        </section>
+
+                        <section className={cn(THEME.glassCard, "p-6 space-y-6")}>
+                            <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
-                                    <ShoppingBag className="w-4 h-4" />
+                                    <Layers className="w-5 h-5" />
                                 </div>
-                                <h3 className="font-semibold text-base">Brand & Offer</h3>
+                                <h3 className="font-semibold text-lg">Format & Style</h3>
                             </div>
-
-                            <div className="space-y-4">
+                            <div className="grid sm:grid-cols-2 gap-5">
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Brand / Product</Label>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <Input placeholder="Brand Name" value={brandName} onChange={e => setBrandName(e.target.value)} className="bg-background/40 border-white/10" />
-                                        <Input placeholder="Product Name" value={productName} onChange={e => setProductName(e.target.value)} className="bg-background/40 border-white/10" />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Category</Label>
-                                    <Select value={category} onValueChange={setCategory}>
-                                        <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
-                                        <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Offer Details</Label>
-                                    <Input placeholder="e.g. 20% OFF, Summer Sale" value={offer} onChange={e => setOffer(e.target.value)} className="bg-background/40 border-white/10" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Call to Action (CTA)</Label>
-                                    <Select value={cta} onValueChange={setCta}>
-                                        <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
-                                        <SelectContent>{CTAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Target Audience</Label>
-                                    <Input placeholder="e.g. Gen Z, Professionals" value={targetAudience} onChange={e => setTargetAudience(e.target.value)} className="bg-background/40 border-white/10" />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Card 2: Placement */}
-                        <div className="p-5 rounded-[18px] border border-white/[0.08] bg-white/[0.02] shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="p-2 rounded-lg bg-orange-500/10 text-orange-400">
-                                    <Monitor className="w-4 h-4" />
-                                </div>
-                                <h3 className="font-semibold text-base">Banner Placement</h3>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Platform</Label>
-                                    <Select value={placement} onValueChange={setPlacement}>
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Placement</Label>
+                                    <Select value={placement} onValueChange={v => setFieldManually('placement', v, setPlacement)}>
                                         <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
                                         <SelectContent>{PLACEMENTS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Dimensions</Label>
-                                    <Select value={sizePreset} onValueChange={setSizePreset}>
-                                        <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
-                                        <SelectContent>{SIZES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="flex items-center gap-2 pt-1">
-                                    <Checkbox id="safeArea" checked={safeArea} onCheckedChange={(c) => setSafeArea(c === true)} className="border-white/20 data-[state=checked]:bg-primary" />
-                                    <Label htmlFor="safeArea" className="text-xs font-medium cursor-pointer text-muted-foreground">Enforce Safe Area (Padding)</Label>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Card 3: Visuals */}
-                        <div className="p-5 rounded-[18px] border border-white/[0.08] bg-white/[0.02] shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400">
-                                    <Palette className="w-4 h-4" />
-                                </div>
-                                <h3 className="font-semibold text-base">Visual Direction</h3>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Style Aesthetic</Label>
-                                    <Select value={style} onValueChange={setStyle}>
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Style</Label>
+                                    <Select value={style} onValueChange={v => setFieldManually('style', v, setStyle)}>
                                         <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
                                         <SelectContent>{STYLES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                                     </Select>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Background Type</Label>
-                                    <Select value={backgroundType} onValueChange={setBackgroundType}>
-                                        <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
-                                        <SelectContent>{BACKGROUNDS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Brand Colors</Label>
-                                    <Input placeholder="e.g. Modern Pink, Black, Gold" value={brandColors} onChange={e => setBrandColors(e.target.value)} className="bg-background/40 border-white/10" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Props / Mood</Label>
-                                    <Input placeholder="e.g. Podium, Neon, Tropical Leaves" value={props} onChange={e => setProps(e.target.value)} className="bg-background/40 border-white/10" />
-                                </div>
                             </div>
-                        </div>
+                        </section>
 
-                        {/* Card 4: Compliance (Condensed) */}
-                        <div className="p-5 rounded-[18px] border border-white/[0.08] bg-white/[0.02] shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300">
-                            <h3 className="font-semibold text-sm mb-3 text-muted-foreground">Quality Check</h3>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="flex items-center gap-2">
-                                    <Checkbox id="fw1" checked={noWatermark} onCheckedChange={(c) => setNoWatermark(c === true)} className="border-white/20" />
-                                    <Label htmlFor="fw1" className="text-xs font-medium cursor-pointer text-muted-foreground">No Watermarks</Label>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Checkbox id="fw3" checked={noDistortedLogos} onCheckedChange={(c) => setNoDistortedLogos(c === true)} className="border-white/20" />
-                                    <Label htmlFor="fw3" className="text-xs font-medium cursor-pointer text-muted-foreground">No Distorted Logos</Label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <Button
-                            variant="outline"
-                            onClick={handleClear}
-                            className="w-full border-white/10 bg-background/50 backdrop-blur-md hover:bg-white/10 hover:text-destructive transition-colors rounded-xl h-10"
-                        >
-                            <Trash2 className="w-4 h-4 mr-2" /> Reset Form
+                        <Button onClick={handleGenerate} disabled={loading} className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold">
+                            {loading ? <RefreshCw className="mr-2 animate-spin" /> : <Sparkles className="mr-2" />}
+                            Generate Final Concepts
                         </Button>
                     </div>
 
-                    {/* RIGHT PANEL: ASSISTANT */}
-                    <div className="flex flex-col space-y-4 animate-in fade-in slide-in-from-right-4 duration-700 delay-100">
-
-                        {/* 1. HEADER (Title + Chips) */}
-                        <div className={cn(THEME.glassCard, "p-5 space-y-4 border-primary/20 relative overflow-hidden group")}>
-                            {/* Glow Effect */}
-                            <div className="absolute top-0 right-0 p-20 bg-primary/10 blur-[80px] rounded-full pointer-events-none group-hover:bg-primary/20 transition-all duration-1000" />
-
-                            <div className="flex items-center justify-between relative z-10">
-                                <div>
-                                    <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70 flex items-center gap-2">
-                                        <Sparkles className="w-5 h-5 text-purple-400 fill-purple-400/20" />
-                                        Banner Prompt Assistant <span className="text-[10px] text-muted-foreground/50 font-mono">v3</span>
-                                    </h2>
-                                    <p className="text-xs text-purple-300/80 font-medium mt-1">
-                                        Auto-fill fields and generate premium e-commerce banners
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                    <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Online</span>
-                                </div>
-                            </div>
-
-                            {/* CHIPS */}
-                            <div className="flex flex-wrap gap-2 relative z-10">
-                                {["Homepage hero banner", "Product launch banner", "Flash sale banner", "Free shipping banner", "Black Friday banner"].map((chip) => (
-                                    <button
-                                        key={chip}
-                                        onClick={() => setAssistantInput(chip)}
-                                        className="text-[10px] px-2.5 py-1 rounded-full bg-white/5 border border-white/5 hover:bg-primary/20 hover:border-primary/30 hover:text-primary transition-all cursor-pointer"
-                                    >
-                                        {chip}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* 2. STICKY INPUT */}
-                        <div className="sticky top-24 z-30 group/input">
-                            <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-xl opacity-20 group-hover/input:opacity-40 transition duration-500 blur-sm" />
-                            <div className="relative bg-[#0F0F12] rounded-xl p-1 shadow-2xl border border-white/10">
-                                <Textarea
-                                    placeholder="Describe your banner... e.g. Luxury skincare launch banner, 20% OFF"
-                                    value={assistantInput}
-                                    onChange={(e) => setAssistantInput(e.target.value)}
-                                    className="min-h-[80px] w-full resize-none border-0 bg-transparent p-3 text-sm focus-visible:ring-0 placeholder:text-muted-foreground/50"
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter' && !e.shiftKey) {
-                                            e.preventDefault();
-                                            handleAssistantSubmit();
-                                        }
-                                    }}
-                                />
-                                <div className="flex justify-between items-center px-2 pb-2">
-                                    <span className="text-[10px] text-muted-foreground/60 pl-2">Press Enter to generate</span>
-                                    <Button
-                                        size="sm"
-                                        onClick={handleAssistantSubmit}
-                                        disabled={loading || isThinking || !assistantInput.trim()}
-                                        className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-500/20 border-0 h-8 px-4 rounded-lg font-medium text-xs transition-all hover:scale-105 active:scale-95"
-                                    >
-                                        {(loading || isThinking) ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}
-                                        Auto-Fill & Generate
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 3. CHAT MESSAGES (Scrollable) */}
-                        <div className="min-h-[320px] max-h-[500px] overflow-y-auto custom-scrollbar space-y-4 p-5 rounded-2xl bg-white/[0.03] border border-white/10 shadow-[inset_0_0_22px_rgba(140,90,255,0.10)] flex flex-col">
-                            {chatHistory.length === 0 && !result && (
-                                <div className="flex-1 flex flex-col items-center justify-center text-center p-8 opacity-70 mt-12">
-                                    <Sparkles className="w-10 h-10 mb-4 text-primary/60 animate-pulse" />
-                                    <p className="text-[15px] font-medium mb-1">Assistant ready.</p>
-                                    <p className="text-sm text-muted-foreground">Type a request above to start.</p>
-                                </div>
-                            )}
-                            {chatHistory.map((msg, idx) => (
-                                <motion.div
-                                    key={idx}
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className={cn(
-                                        "flex w-full mb-2",
-                                        msg.role === 'user' ? "justify-end" : "justify-start"
-                                    )}
-                                >
-                                    <div className={cn(
-                                        "max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-md backdrop-blur-md leading-relaxed",
-                                        msg.role === 'user'
-                                            ? "bg-gradient-to-br from-primary via-primary/90 to-purple-600 text-white rounded-tr-sm border border-primary/20"
-                                            : "bg-muted/60 text-foreground/90 rounded-tl-sm border border-white/10 shadow-[0_0_15px_rgba(140,90,255,0.05)]"
-                                    )}>
-                                        {msg.content}
-                                    </div>
-                                </motion.div>
-                            ))}
-                            {isThinking && <AssistantTypingIndicator />}
-                        </div>
-
-                        {/* DIVIDER */}
-                        <div className="border-t border-white/10 pb-4" />
-
-                        {/* 4. OUTPUT RESULT (Bottom) */}
-                        <div className="h-auto min-h-[300px] mt-4 flex flex-col">
-                            {result ? (
-                                <motion.div
-                                    key="result"
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.98 }}
-                                    className={cn(THEME.glassCard, "flex-1 overflow-hidden flex flex-col shadow-2xl border-primary/20 rounded-xl relative")}
-                                >
-                                    {/* Soft Glow Border */}
-                                    <div className="absolute inset-0 border border-primary/20 rounded-xl pointer-events-none z-20" />
-
-                                    <Tabs defaultValue="text" className="w-full h-auto flex flex-col">
-                                        <div className="border-b border-white/5 bg-background/40 px-3 py-2 backdrop-blur-sm flex justify-between items-center">
-                                            <TabsList className="bg-transparent border-0 p-0 h-auto gap-2">
-                                                <TabsTrigger value="text" className="data-[state=active]:bg-primary/20 h-7 text-[10px] px-3 rounded-full">PROMPT</TabsTrigger>
-                                                <TabsTrigger value="json" className="data-[state=active]:bg-primary/20 h-7 text-[10px] px-3 rounded-full">JSON SPEC</TabsTrigger>
-                                            </TabsList>
-                                            <div className="flex gap-2">
-                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => copyToClipboard(result.text, false)}>
-                                                    <Copy className="w-3.5 h-3.5" />
-                                                </Button>
-                                            </div>
-                                        </div>
-
-                                        <div className="relative h-auto min-h-[300px] bg-[#09090b]">
-                                            <TabsContent value="text" className="m-0 h-full">
-                                                <div className="h-full w-full p-4 font-mono text-xs leading-relaxed text-slate-300 whitespace-pre-wrap break-words border-0 bg-transparent" style={{ fontFamily: '"Geist Mono", monospace' }}>
-                                                    {result.text}
-                                                </div>
-                                            </TabsContent>
-                                            <TabsContent value="json" className="m-0 h-full">
-                                                <pre className="h-full w-full overflow-auto p-4 text-[10px] font-mono text-emerald-400 leading-relaxed custom-scrollbar whitespace-pre-wrap break-all">
-                                                    {result.json}
-                                                </pre>
-                                            </TabsContent>
-                                        </div>
-                                    </Tabs>
-                                </motion.div>
-                            ) : (
-                                // Placeholder for visual balance
-                                <div className="h-32 rounded-xl border border-dashed border-white/10 bg-white/[0.02] flex items-center justify-center">
-                                    <span className="text-xs text-muted-foreground/30">Output will appear here</span>
-                                </div>
-                            )}
+                    <div className="lg:h-[calc(100vh-120px)] lg:sticky lg:top-24">
+                        <PremiumChatbot
+                            chatHistory={chatHistory}
+                            isLoading={assistantLoading}
+                            credits={credits}
+                            errorStatus={errorStatus}
+                            onSendMessage={sendMessage}
+                            result={result}
+                            suggestions={[
+                                "Bold typography for Meta Ad",
+                                "Minimalist hero for Shopify",
+                                "Cyberpunk event banner",
+                                "Luxury email promotional header"
+                            ]}
+                        />
+                        <div className="mt-4 px-2">
+                            <Button variant="ghost" size="sm" onClick={() => setTouchedByUser({})} className="text-[10px] uppercase tracking-widest text-muted-foreground/40 hover:text-primary transition-colors h-6">
+                                <RefreshCw className="w-3 h-3 mr-1.5" /> Reset Flags
+                            </Button>
                         </div>
                     </div>
                 </div>
