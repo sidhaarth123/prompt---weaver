@@ -144,7 +144,7 @@ export default function VideoGenerator() {
         <div style={{
             height: "100vh", background: "#080a10",
             display: "flex", flexDirection: "column",
-            overflow: "hidden",
+            overflow: "hidden", paddingTop: 80,
             fontFamily: "'Inter','SF Pro',system-ui,sans-serif",
         }}>
             <Navbar />

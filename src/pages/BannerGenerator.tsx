@@ -131,7 +131,7 @@ export default function BannerGenerator() {
         <div style={{
             height: "100vh", background: "#05070a",
             display: "flex", flexDirection: "column",
-            overflow: "hidden",
+            overflow: "hidden", paddingTop: 80,
             fontFamily: "'Inter','SF Pro',system-ui,sans-serif",
         }}>
             <Navbar />

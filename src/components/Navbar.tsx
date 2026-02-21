@@ -160,425 +160,162 @@ export default function Navbar() {
   }, [user?.id]);
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.08] bg-black/60 backdrop-blur-xl transition-all duration-300 supports-[backdrop-filter]:bg-black/60">
-      <div className="container mx-auto flex h-16 lg:h-20 items-center justify-between px-6">
-        <Link to="/" className="flex items-center gap-3 group relative">
-          <div className="absolute inset-0 bg-primary/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-full" />
-          <div className="relative bg-gradient-to-br from-primary/20 to-primary/5 p-2 rounded-xl group-hover:scale-105 transition-transform duration-300 border border-white/5 ring-1 ring-white/5">
-            <Sparkles className="h-5 w-5 lg:h-6 lg:w-6 text-primary fill-primary/20" />
+    <nav className="fixed top-0 left-0 right-0 z-[60] h-[80px] border-b border-white/[0.05] bg-[#0b0c14]/80 backdrop-blur-xl transition-all duration-300">
+      <div className="w-full h-full flex items-center justify-between px-8">
+
+        {/* ── LOGO SECTION ── */}
+        <Link to="/" className="flex items-center gap-4 group flex-shrink-0">
+          <div className="relative">
+            {/* Logo box with glow */}
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#4f46e5] to-[#06b6d4] flex items-center justify-center relative z-10 shadow-[0_0_20px_rgba(79,70,229,0.4)] transition-transform group-hover:scale-105">
+              <Sparkles className="h-5 w-5 text-white fill-white/20" />
+            </div>
+            <div className="absolute inset-0 bg-cyan-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
-          <span className="relative text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/80">
-            Prompt Weaver
-          </span>
+          <div className="flex flex-col">
+            <span className="text-[12px] font-black tracking-[0.2em] text-white leading-tight">PROMPT</span>
+            <span className="text-[12px] font-black tracking-[0.2em] text-white/50 leading-tight">WEAVER</span>
+          </div>
         </Link>
 
-        {/* Desktop Navigation */}
-        <div className="hidden lg:flex items-center gap-8">
-          {user ? (
-            <Link
-              to="/pricing"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Pricing
-            </Link>
-          ) : (
-            <>
-              <a
-                href="#features"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Features
-              </a>
+        {/* ── DESKTOP NAVIGATION ── */}
+        <div className="hidden xl:flex items-center justify-center gap-10 flex-1 px-10">
+          {[
+            { label: "PRICING", path: "/pricing" },
+            { label: "IMAGE", path: "/image-generator" },
+            { label: "VIDEO", path: "/video-generator" },
+            { label: "BANNER", path: "/banner-generator" },
+            { label: "WEBSITE", path: "/website-generator" },
+            { label: "AD", path: "/ad" },
+            { label: "CONTENT", path: "/content-writing-generator" },
+            { label: "CODING", path: "/coding-assistant" },
+            { label: "LIBRARY", path: "/library" },
+            { label: "ABOUT", path: "/about" },
+          ].map((link) => {
+            const isActive = location.pathname === link.path;
+            return (
               <Link
-                to="/about"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                key={link.label}
+                to={link.path}
+                className={cn(
+                  "relative h-[80px] flex items-center group overflow-hidden",
+                  isActive ? "text-white" : "text-white/40 hover:text-white/70"
+                )}
               >
-                Templates
+                <span className="text-[10px] font-black tracking-[0.18em] transition-colors">
+                  {link.label}
+                </span>
+                {/* Active Indicator Line */}
+                <div className={cn(
+                  "absolute bottom-0 left-0 right-0 h-[2px] bg-[#2dd4bf] transition-transform duration-300",
+                  isActive ? "translate-y-0" : "translate-y-[2px]"
+                )} />
+                {/* Glow for active */}
+                {isActive && (
+                  <div className="absolute bottom-[-10px] left-1/2 -translate-x-1/2 w-8 h-8 bg-cyan-500/20 blur-lg rounded-full" />
+                )}
               </Link>
-              <Link
-                to="/pricing"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Pricing
-              </Link>
-            </>
-          )}
-          <Link
-            to="/docs"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Docs
-          </Link>
+            );
+          })}
+        </div>
 
+        {/* ── AUTH / PROFILE SECTION ── */}
+        <div className="flex items-center gap-6 flex-shrink-0">
           {user ? (
-            <>
-              {/* Unified Plan & Credits Badge */}
+            <div className="flex items-center gap-4">
+              {/* Credits Pill (Matches image) */}
+              <div className="flex items-center gap-3 h-10 px-4 rounded-full bg-[#0d0f17] border border-[#14b8a6]/20 shadow-[0_0_15px_rgba(20,184,166,0.05)]">
+                <div className="flex flex-col items-center">
+                  <span className="text-[8px] font-bold text-[#14b8a6]/50 tracking-wider">CREDITS</span>
+                  <div className="w-8 h-[2px] bg-gradient-to-r from-[#818cf8] to-[#2dd4bf] rounded-full mt-0.5" />
+                </div>
+                <span className="text-sm font-black text-white">{creditsBalance}</span>
+              </div>
+
               <Popover>
                 <PopoverTrigger asChild>
-                  <button className={cn(
-                    "group flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all hover:bg-muted/50 outline-none focus-visible:ring-2 focus-visible:ring-primary/20",
-                    // Dynamic Border Colors
-                    creditsBalance <= 0
-                      ? "border-destructive/30 bg-destructive/5 text-destructive hover:bg-destructive/10"
-                      : creditsBalance <= 3
-                        ? "border-orange-500/30 bg-orange-500/5 text-orange-400 hover:bg-orange-500/10"
-                        : "border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"
-                  )}>
-                    {/* Icon based on state */}
-                    {creditsBalance <= 0 ? (
-                      <AlertCircle className="h-3.5 w-3.5" />
-                    ) : (
-                      <Sparkles className={cn(
-                        "h-3.5 w-3.5 transition-colors",
-                        creditsBalance > 3 && "text-primary fill-primary/20"
-                      )} />
-                    )}
-
-                    {/* Text Logic */}
-                    <span className="flex items-center gap-1.5">
-                      {loading ? (
-                        <span className="animate-pulse">Loading...</span>
-                      ) : (
-                        <>
-                          <span className={cn(
-                            "uppercase tracking-wider opacity-80",
-                            plan === "pro" ? "text-primary font-bold" : "font-medium"
-                          )}>{planLabel}</span>
-                          <span className="w-px h-3 bg-current opacity-20 mx-0.5" />
-                          <span>
-                            {creditsBalance === 0 ? "0 credits · Upgrade" : `${creditsBalance} credits`}
-                          </span>
-                        </>
-                      )}
-                    </span>
-
-                    <ChevronDown className="h-3 w-3 opacity-50 group-hover:opacity-100 transition-opacity" />
+                  <button className="w-10 h-10 rounded-full bg-[#1a1c25] border border-white/5 flex items-center justify-center hover:bg-[#252833] transition-colors">
+                    <User className="h-4 w-4 text-white/60" />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-64 p-0 border-white/10 bg-black/90 backdrop-blur-xl" align="end">
-                  <div className="p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Current Plan</span>
-                      <span className={cn(
-                        "text-xs font-bold px-2 py-0.5 rounded-full border",
-                        plan === "pro"
-                          ? "border-primary/30 bg-primary/10 text-primary"
-                          : "border-white/10 bg-white/5 text-muted-foreground"
-                      )}>
-                        {planLabel}
-                      </span>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-foreground font-medium">Credits</span>
-                        <span className={cn(
-                          "font-mono font-bold",
-                          creditsBalance <= 3 ? "text-orange-400" : "text-foreground"
-                        )}>
-                          {creditsBalance}
-                        </span>
-                      </div>
-                      <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-                        <div
-                          className={cn(
-                            "h-full rounded-full transition-all duration-500",
-                            creditsBalance <= 3 ? "bg-orange-500" : "bg-primary"
-                          )}
-                          style={{
-                            width: `${Math.min((creditsBalance / (PLAN_CREDITS[plan as keyof typeof PLAN_CREDITS] || 10)) * 100, 100)}%`
-                          }}
-                        />
-                      </div>
-                      {creditsBalance <= 3 && (
-                        <p className="text-[10px] text-orange-400/80 font-medium">
-                          {creditsBalance === 0 ? "Out of credits" : "Low on credits"}
-                        </p>
-                      )}
-                    </div>
+                <PopoverContent className="w-56 p-2 bg-[#0d0f17] border-white/5 shadow-2xl" align="end">
+                  <div className="p-3 border-b border-white/5 mb-2">
+                    <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold mb-1">Authenticated as</p>
+                    <p className="text-xs text-white truncate font-medium">{user.email}</p>
                   </div>
-
-                  <div className="p-2 bg-white/5 border-t border-white/5 grid grid-cols-2 gap-2">
-                    <Link to="/pricing" className="col-span-2">
-                      <Button size="sm" variant="default" className="w-full h-8 text-xs bg-primary hover:bg-primary/90 text-white border-0">
-                        <Zap className="h-3 w-3 mr-1.5" />
-                        Upgrade Plan
-                      </Button>
-                    </Link>
-                  </div>
+                  <Link to="/library" className="w-full">
+                    <Button variant="ghost" size="sm" className="w-full justify-start text-xs text-white/50 hover:text-white hover:bg-white/5">
+                      <Sparkles className="h-3 w-3 mr-2" /> My Library
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => signOut()}
+                    className="w-full justify-start text-xs text-red-400/60 hover:text-red-400 hover:bg-red-400/5 mt-1"
+                  >
+                    <LogOut className="h-3 w-3 mr-2" /> Sign Out
+                  </Button>
                 </PopoverContent>
               </Popover>
-
-              {/* Generator Links */}
-              <Link
-                to="/image-generator"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
-              >
-                <ImageIcon className="h-4 w-4" />
-                Image
-              </Link>
-              <Link
-                to="/video-generator"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
-              >
-                <Video className="h-4 w-4" />
-                Video
-              </Link>
-              <Link
-                to="/banner-generator"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
-              >
-                <CreditCard className="h-4 w-4" />
-                Banner
-              </Link>
-              <Link
-                to="/website-generator"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
-              >
-                <LayoutTemplate className="h-4 w-4" />
-                Website
-              </Link>
-              <Link
-                to="/ad"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
-              >
-                <Megaphone className="h-4 w-4" />
-                Ad
-              </Link>
-              <Link
-                to="/content-writing-generator"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
-              >
-                <PenLine className="h-4 w-4" />
-                Content
-              </Link>
-              <Link
-                to="/coding-assistant"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
-              >
-                <Code2 className="h-4 w-4" />
-                Coding
-              </Link>
-
-              {/* Library/History */}
-              <Link
-                to="/library"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Library
-              </Link>
-              <Link
-                to="/app/about"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                About
-              </Link>
-
-              {/* Sign Out */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => signOut()}
-                className="text-sm hover:text-foreground"
-              >
-                Sign Out
-              </Button>
-            </>
+            </div>
           ) : (
-            <>
+            <div className="flex items-center gap-4">
               <Link to="/auth?tab=login">
-                <Button variant="ghost" size="sm" className="text-sm font-medium text-white/70 hover:text-white">
-                  Log in
+                <Button variant="ghost" className="text-[11px] font-black tracking-[0.15em] text-white/50 hover:text-white uppercase">
+                  Login
                 </Button>
               </Link>
               <Link to="/auth?tab=signup">
-                <Button className="h-9 px-5 text-sm font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 border-0 text-white shadow-lg shadow-indigo-600/20 transition-all hover:scale-[1.02]">
+                <Button className="h-10 px-6 bg-white text-black text-[11px] font-black tracking-[0.1em] rounded-lg hover:bg-white/90 shadow-[0_0_20px_rgba(255,255,255,0.15)] uppercase">
                   Get Started
                 </Button>
               </Link>
-            </>
+            </div>
           )}
-        </div>
 
-        {/* Mobile Menu Button */}
-        <button
-          className="lg:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
-          onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Toggle menu"
-        >
-          {mobileOpen ? (
-            <X className="h-6 w-6" />
-          ) : (
-            <Menu className="h-6 w-6" />
-          )}
-        </button>
+          {/* Mobile Menu Trigger */}
+          <button
+            className="xl:hidden p-2 text-white/50 hover:text-white"
+            onClick={() => setMobileOpen(!mobileOpen)}
+          >
+            {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* ── MOBILE MENU ── */}
       {mobileOpen && (
-        <div className="lg:hidden border-t border-white/10 bg-black/95 backdrop-blur-xl">
-          <div className="container mx-auto px-6 py-6 flex flex-col gap-4">
-            {user ? (
-              <Link
-                to="/pricing"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
-                onClick={() => setMobileOpen(false)}
-              >
-                Pricing
-              </Link>
-            ) : (
-              <>
-                <a
-                  href="#features"
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  Features
-                </a>
-                <Link
-                  to="/about"
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  Templates
-                </Link>
-                <Link
-                  to="/pricing"
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  Pricing
-                </Link>
-              </>
-            )}
+        <div className="xl:hidden absolute top-20 left-0 right-0 bg-[#0b0c14] border-b border-white/5 p-6 space-y-4 shadow-2xl">
+          {[
+            { label: "PRICING", path: "/pricing" },
+            { label: "IMAGE", path: "/image-generator" },
+            { label: "VIDEO", path: "/video-generator" },
+            { label: "BANNER", path: "/banner-generator" },
+            { label: "WEBSITE", path: "/website-generator" },
+            { label: "AD", path: "/ad" },
+            { label: "CONTENT", path: "/content-writing-generator" },
+            { label: "CODING", path: "/coding-assistant" },
+          ].map(link => (
             <Link
-              to="/docs"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
+              key={link.label}
+              to={link.path}
+              className="block text-[10px] font-black tracking-[0.2em] text-white/40 hover:text-white py-2"
               onClick={() => setMobileOpen(false)}
             >
-              Docs
+              {link.label}
             </Link>
-
-            {user ? (
-              <>
-                {/* Plan & Credits (Mobile) */}
-                <div className="flex items-center justify-between py-2 border-t border-white/10 pt-4">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Current Plan</span>
-                    <div className="flex items-center gap-2">
-                      <span className={cn(
-                        "text-xs font-bold px-2 py-0.5 rounded-full border",
-                        plan === "pro"
-                          ? "border-primary/30 bg-primary/10 text-primary"
-                          : "border-white/10 bg-white/5 text-muted-foreground"
-                      )}>
-                        {planLabel}
-                      </span>
-                      {plan === "free" && (
-                        <Link to="/pricing" className="text-[10px] text-primary hover:underline">
-                          Upgrade
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Credits</span>
-                    <div className="flex items-center gap-1.5">
-                      <Sparkles className={cn(
-                        "h-3 w-3",
-                        creditsBalance <= 3 ? "text-orange-400" : "text-primary"
-                      )} />
-                      <span className={cn(
-                        "text-sm font-mono font-bold",
-                        creditsBalance <= 3 ? "text-orange-400" : "text-foreground"
-                      )}>
-                        {creditsBalance}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <Link
-                  to="/image-generator"
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2 flex items-center gap-2"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <ImageIcon className="h-4 w-4" />
-                  Image Generator
-                </Link>
-                <Link
-                  to="/video-generator"
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2 flex items-center gap-2"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <Video className="h-4 w-4" />
-                  Video Generator
-                </Link>
-                <Link
-                  to="/banner-generator"
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2 flex items-center gap-2"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <CreditCard className="h-4 w-4" />
-                  Banner Generator
-                </Link>
-                <Link
-                  to="/website-generator"
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2 flex items-center gap-2"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <LayoutTemplate className="h-4 w-4" />
-                  Website Generator
-                </Link>
-                <Link
-                  to="/ad"
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2 flex items-center gap-2"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <Megaphone className="h-4 w-4" />
-                  Ad Generator
-                </Link>
-                <Link
-                  to="/library"
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  Library
-                </Link>
-                <Link
-                  to="/app/about"
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  About
-                </Link>
-                <Button
-                  variant="ghost"
-                  className="justify-start text-muted-foreground hover:text-foreground"
-                  onClick={() => {
-                    signOut();
-                    setMobileOpen(false);
-                  }}
-                >
-                  Sign Out
-                </Button>
-              </>
-            ) : (
-              <>
-                <Link to="/auth?tab=login" onClick={() => setMobileOpen(false)}>
-                  <Button variant="ghost" className="w-full justify-start text-white/70">
-                    Log in
-                  </Button>
-                </Link>
-                <Link to="/auth?tab=signup" onClick={() => setMobileOpen(false)}>
-                  <Button className="w-full rounded-lg bg-indigo-600 hover:bg-indigo-500 border-0 text-white shadow-lg shadow-indigo-600/20">
-                    Get Started
-                  </Button>
-                </Link>
-              </>
-            )}
-          </div>
+          ))}
+          {!user && (
+            <div className="pt-4 border-t border-white/5 flex flex-col gap-3">
+              <Link to="/auth?tab=login" onClick={() => setMobileOpen(false)}>
+                <Button variant="ghost" className="w-full text-xs font-black tracking-widest text-white/50">LOGIN</Button>
+              </Link>
+              <Link to="/auth?tab=signup" onClick={() => setMobileOpen(false)}>
+                <Button className="w-full bg-white text-black text-xs font-black tracking-widest">GET STARTED</Button>
+              </Link>
+            </div>
+          )}
         </div>
       )}
     </nav>

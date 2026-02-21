@@ -130,7 +130,7 @@ export default function ContentWritingGenerator() {
         <div style={{
             height: "100vh", background: "#05060b",
             display: "flex", flexDirection: "column",
-            overflow: "hidden",
+            overflow: "hidden", paddingTop: 80,
             fontFamily: "'Inter','SF Pro',system-ui,sans-serif",
         }}>
             <Navbar />

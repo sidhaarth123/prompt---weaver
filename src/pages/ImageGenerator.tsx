@@ -108,7 +108,7 @@ export default function ImageGenerator() {
     const OUTPUT_W = 300;
 
     return (
-        <div style={{ height: "100vh", background: "#07080d", display: "flex", flexDirection: "column", overflow: "hidden", fontFamily: "'Inter','SF Pro',system-ui,sans-serif" }}>
+        <div style={{ height: "100vh", background: "#07080d", display: "flex", flexDirection: "column", overflow: "hidden", paddingTop: 80, fontFamily: "'Inter','SF Pro',system-ui,sans-serif" }}>
             <Navbar />
 
             {/* 3-column body */}

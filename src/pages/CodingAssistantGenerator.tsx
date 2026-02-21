@@ -133,7 +133,7 @@ export default function CodingAssistantGenerator() {
         <div style={{
             height: "100vh", background: "#06070a",
             display: "flex", flexDirection: "column",
-            overflow: "hidden",
+            overflow: "hidden", paddingTop: 80,
             fontFamily: "'Inter','SF Pro',system-ui,sans-serif",
         }}>
             <Navbar />
