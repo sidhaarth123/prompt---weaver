@@ -164,45 +164,53 @@ export default function Navbar() {
       <div className="w-full h-full flex items-center justify-between px-8">
 
         {/* ── LOGO SECTION ── */}
-        <Link to="/" className="flex items-center gap-4 group flex-shrink-0">
+        <Link to="/" className="flex items-center gap-3 group flex-shrink-0">
           <div className="relative">
-            {/* Logo box with glow */}
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#4f46e5] to-[#06b6d4] flex items-center justify-center relative z-10 shadow-[0_0_20px_rgba(79,70,229,0.4)] transition-transform group-hover:scale-105">
-              <Sparkles className="h-5 w-5 text-white fill-white/20" />
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#4f46e5] to-[#06b6d4] flex items-center justify-center relative z-10 shadow-[0_0_15px_rgba(79,70,229,0.4)]">
+              <Sparkles className="h-4 w-4 text-white" />
             </div>
-            <div className="absolute inset-0 bg-cyan-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="absolute inset-0 bg-cyan-500/20 blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
-          <div className="flex flex-col">
-            <span className="text-[12px] font-black tracking-[0.2em] text-white leading-tight">PROMPT</span>
-            <span className="text-[12px] font-black tracking-[0.2em] text-white/50 leading-tight">WEAVER</span>
-          </div>
+          <span className="text-[14px] font-black tracking-[0.15em] text-white uppercase group-hover:text-white/80 transition-colors">
+            Prompt Weaver
+          </span>
         </Link>
 
         {/* ── DESKTOP NAVIGATION ── */}
         <div className="hidden xl:flex items-center justify-center gap-10 flex-1 px-10">
-          {[
-            { label: "PRICING", path: "/pricing" },
-            { label: "IMAGE", path: "/image-generator" },
-            { label: "VIDEO", path: "/video-generator" },
-            { label: "BANNER", path: "/banner-generator" },
-            { label: "WEBSITE", path: "/website-generator" },
-            { label: "AD", path: "/ad" },
-            { label: "CONTENT", path: "/content-writing-generator" },
-            { label: "CODING", path: "/coding-assistant" },
-            { label: "LIBRARY", path: "/library" },
-            { label: "ABOUT", path: "/about" },
-          ].map((link) => {
-            const isActive = location.pathname === link.path;
+          {(user
+            ? [
+              { label: "IMAGE", path: "/image-generator" },
+              { label: "VIDEO", path: "/video-generator" },
+              { label: "BANNER", path: "/banner-generator" },
+              { label: "WEBSITE", path: "/website-generator" },
+              { label: "AD", path: "/ad" },
+              { label: "CONTENT", path: "/content-writing-generator" },
+              { label: "CODING", path: "/coding-assistant" },
+              { label: "LIBRARY", path: "/library" },
+              { label: "PRICING", path: "/pricing" },
+              { label: "ABOUT", path: "/about" },
+            ]
+            : [
+              { label: "HOME", path: "/" },
+              { label: "ABOUT", path: "/about" },
+              { label: "JSON PROMPTS", path: "/about#json" },
+              { label: "IMAGE", path: "/about#image" },
+              { label: "VIDEO", path: "/about#video" },
+              { label: "PRICING", path: "/pricing" },
+            ]
+          ).map((link) => {
+            const isActive = location.pathname === link.path || (link.path.includes("#") && location.pathname === "/about");
             return (
               <Link
                 key={link.label}
                 to={link.path}
                 className={cn(
                   "relative h-[80px] flex items-center group overflow-hidden",
-                  isActive ? "text-white" : "text-white/40 hover:text-white/70"
+                  isActive ? "text-white font-bold" : "text-white/40 hover:text-white/70"
                 )}
               >
-                <span className="text-[10px] font-black tracking-[0.18em] transition-colors">
+                <span className="text-[10px] font-black tracking-[0.2em] transition-colors">
                   {link.label}
                 </span>
                 {/* Active Indicator Line */}
@@ -210,10 +218,6 @@ export default function Navbar() {
                   "absolute bottom-0 left-0 right-0 h-[2px] bg-[#2dd4bf] transition-transform duration-300",
                   isActive ? "translate-y-0" : "translate-y-[2px]"
                 )} />
-                {/* Glow for active */}
-                {isActive && (
-                  <div className="absolute bottom-[-10px] left-1/2 -translate-x-1/2 w-8 h-8 bg-cyan-500/20 blur-lg rounded-full" />
-                )}
               </Link>
             );
           })}
@@ -262,13 +266,13 @@ export default function Navbar() {
           ) : (
             <div className="flex items-center gap-4">
               <Link to="/auth?tab=login">
-                <Button variant="ghost" className="text-[11px] font-black tracking-[0.15em] text-white/50 hover:text-white uppercase">
+                <Button variant="ghost" className="text-[11px] font-black tracking-[0.15em] text-white/50 hover:text-white uppercase transition-colors">
                   Login
                 </Button>
               </Link>
               <Link to="/auth?tab=signup">
-                <Button className="h-10 px-6 bg-white text-black text-[11px] font-black tracking-[0.1em] rounded-lg hover:bg-white/90 shadow-[0_0_20px_rgba(255,255,255,0.15)] uppercase">
-                  Get Started
+                <Button className="h-10 px-8 bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-[11px] font-black tracking-[0.2em] rounded-xl hover:scale-105 transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] uppercase">
+                  Launch App
                 </Button>
               </Link>
             </div>
@@ -296,6 +300,8 @@ export default function Navbar() {
             { label: "AD", path: "/ad" },
             { label: "CONTENT", path: "/content-writing-generator" },
             { label: "CODING", path: "/coding-assistant" },
+            { label: "LIBRARY", path: "/library" },
+            { label: "ABOUT", path: "/about" },
           ].map(link => (
             <Link
               key={link.label}

@@ -104,7 +104,7 @@ export default function About() {
                 </section>
 
                 {/* ── SECTION: THE STRUCTURE OF PERFECTION ── */}
-                <section className="py-32">
+                <section id="json" className="py-32">
                     <div className="container mx-auto px-6 text-center mb-24">
                         <h2 className="text-[48px] font-black tracking-tight mb-4">The Structure of Perfection</h2>
                         <p className="text-lg text-white/40 italic">
@@ -171,7 +171,7 @@ export default function About() {
                 </section>
 
                 {/* ── SECTION: IMAGE GENERATION ── */}
-                <section className="container mx-auto px-6 py-40 border-t border-white/5">
+                <section id="image" className="container mx-auto px-6 py-40 border-t border-white/5">
                     <div className="grid lg:grid-cols-[1fr,1.2fr] gap-20">
                         <div className="space-y-8">
                             <div className="w-14 h-14 rounded-2xl bg-[#06b6d4]/10 border border-[#06b6d4]/20 flex items-center justify-center">
@@ -208,7 +208,7 @@ export default function About() {
                 </section>
 
                 {/* ── SECTION: VIDEO GENERATION ── */}
-                <section className="container mx-auto px-6 py-40 border-t border-white/5">
+                <section id="video" className="container mx-auto px-6 py-40 border-t border-white/5">
                     <div className="grid lg:grid-cols-[1.2fr,1fr] gap-20">
                         <div className="grid grid-cols-2 gap-6">
                             {[
