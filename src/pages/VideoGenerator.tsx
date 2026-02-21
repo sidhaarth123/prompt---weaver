@@ -1,253 +1,410 @@
 import { useState, useRef, useEffect } from "react";
 import Navbar from "@/components/Navbar";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
-import { Slider } from "@/components/ui/slider";
-import { toast } from "@/hooks/use-toast";
-import { THEME, cn } from "@/lib/theme";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-    Video,
-    Copy,
-    Check,
-    RefreshCw,
-    Clapperboard,
-    ShoppingBag,
-    Sparkles,
-    Zap,
-    AlertCircle,
-    Bot,
-    Film,
-    Monitor,
-    Smartphone
-} from "lucide-react";
 import { usePromptWeaverChat } from "@/hooks/usePromptWeaverChat";
-import { PremiumChatbot } from "@/components/PremiumChatbot";
-import { mapVideoResponseToState } from "@/mappers/videoMapper";
+import { toast } from "@/hooks/use-toast";
+import { Zap, Send, Copy, Check, X } from "lucide-react";
 
-// --- Constants ---
-const PLATFORMS = ["Instagram Reel", "Instagram Story", "YouTube Shorts", "TikTok", "YouTube Video", "Facebook Feed Video", "LinkedIn Video"];
-const ASPECT_RATIOS = [
-    { label: "9:16", value: "9:16", icon: Smartphone },
-    { label: "16:9", value: "16:9", icon: Monitor },
-    { label: "1:1", value: "1:1", icon: Smartphone },
-    { label: "4:5", value: "4:5", icon: Smartphone },
+/* ─── Video history sidebar items ───────────────────── */
+interface VideoHistoryItem {
+    id: string;
+    title: string;
+    gradient: string;
+    emoji: string;
+}
+
+const VIDEO_HISTORY: VideoHistoryItem[] = [
+    { id: "1", title: "Cinematic Drone Over Iceland", gradient: "linear-gradient(135deg,#0f4c75,#1b6ca8,#16a085)", emoji: "🏔" },
+    { id: "2", title: "Cyberpunk Cityscape", gradient: "linear-gradient(135deg,#6a0572,#a855f7,#06b6d4)", emoji: "🌆" },
+    { id: "3", title: "Abstract Particle Flow", gradient: "linear-gradient(135deg,#1a1a2e,#7c3aed,#a855f7)", emoji: "✨" },
+    { id: "4", title: "Underwater Reef Life", gradient: "linear-gradient(135deg,#006994,#0ea5e9,#22d3ee)", emoji: "🐠" },
 ];
-const VIDEO_PLATFORM_ASPECT_MAP: Record<string, string> = {
-    "Instagram Reel": "9:16",
-    "Instagram Story": "9:16",
-    "YouTube Shorts": "9:16",
-    "TikTok": "9:16",
-    "YouTube Video": "16:9",
-    "Facebook Feed Video": "4:5",
-    "LinkedIn Video": "16:9"
-};
-const STYLES = ["Cinematic", "UGC / Authentic", "Minimal & Clean", "Bold & Energetic", "Animated", "3D Motion"];
-const AD_TONES = ["Salesy", "Luxury", "Friendly", "Educational", "High Energy"];
 
+/* ─── Brand logo (replaces ChatGPT-style icon) ──────── */
+function BrandAvatar() {
+    return (
+        <div style={{
+            width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+            background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 0 14px rgba(99,60,220,0.45)",
+        }}>
+            <Zap style={{ width: 17, height: 17, color: "#fff", fill: "#fff" }} />
+        </div>
+    );
+}
+
+/* ─── Component ─────────────────────────────────────── */
 export default function VideoGenerator() {
-    const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<{ text: string; json: string } | null>(null);
-    const [copiedText, setCopiedText] = useState(false);
+    const [selectedVideo, setSelectedVideo] = useState("1");
+    const [input, setInput] = useState("");
+    const [copiedPrompt, setCopiedPrompt] = useState(false);
     const [copiedJson, setCopiedJson] = useState(false);
+    const [result, setResult] = useState<{ text: string; json: string } | null>(null);
+    const chatEndRef = useRef<HTMLDivElement>(null);
 
-    // Form State
-    const [platform, setPlatform] = useState("");
-    const [aspectRatio, setAspectRatio] = useState("9:16");
-    const [duration, setDuration] = useState([15]);
-    const [style, setStyle] = useState("");
-    const [hook, setHook] = useState("");
-    const [beats, setBeats] = useState("");
-    const [visuals, setVisuals] = useState("");
-    const [productName, setProductName] = useState("");
-    const [brandName, setBrandName] = useState("");
-    const [cta, setCta] = useState("");
-    const [adTone, setAdTone] = useState("");
+    /* Chat hook */
+    const { chatHistory, isLoading, credits, sendMessage, clearChat } =
+        usePromptWeaverChat({
+            workflowType: "image", // reuse image workflow for now
+            onDataReceived: (res) => {
+                if (res.prompt_package) {
+                    setResult({
+                        text: res.prompt_package.prompt,
+                        json: JSON.stringify({
+                            type: "video",
+                            description: res.prompt_package.prompt,
+                            negative_prompt: res.prompt_package.negative_prompt,
+                            ...(res.final ?? {}),
+                        }, null, 2),
+                    });
+                }
+            },
+        });
 
-    const [touchedByUser, setTouchedByUser] = useState<Record<string, boolean>>({});
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [chatHistory, isLoading]);
 
-    const setFieldManually = (field: string, value: any, setter: (val: any) => void) => {
-        setter(value);
-        setTouchedByUser(prev => ({ ...prev, [field]: true }));
+    const handleSend = () => {
+        if (!input.trim() || isLoading) return;
+        sendMessage(input.trim());
+        setInput("");
     };
 
-    const setFieldAuto = (field: string, value: any) => {
-        if (touchedByUser[field]) return;
-        const setters: Record<string, (val: any) => void> = {
-            platform: setPlatform,
-            aspectRatio: setAspectRatio,
-            style: setStyle,
-            hook: setHook,
-            beats: setBeats,
-            visuals: setVisuals,
-            productName: setProductName,
-            brandName: setBrandName,
-            cta: setCta,
-            adTone: setAdTone
-        };
-        const setter = setters[field];
-        if (setter) setter(value);
-        if (field === 'duration' && typeof value === 'number') setDuration([value]);
+    const copyPrompt = async () => {
+        if (!result) return;
+        await navigator.clipboard.writeText(result.text);
+        setCopiedPrompt(true);
+        setTimeout(() => setCopiedPrompt(false), 2000);
+        toast({ title: "Prompt copied!" });
     };
 
-    const {
-        chatHistory,
-        isLoading: assistantLoading,
-        credits,
-        errorStatus,
-        sendMessage,
-        clearChat
-    } = usePromptWeaverChat({
-        workflowType: 'video',
-        onDataReceived: (res) => {
-            if (res.final) {
-                mapVideoResponseToState(res.final, {}, setFieldAuto);
-            }
-            if (res.prompt_package) {
-                setResult({
-                    text: res.prompt_package.prompt || res.prompt_package.script,
-                    json: JSON.stringify(res.final, null, 2)
-                });
-            }
-        }
-    });
-
-    const handleGenerate = async () => {
-        if (!platform || !style || (!productName && !hook)) {
-            toast({ title: "Missing fields", description: "Fill in Platform, Style, and Hook/Product.", variant: "destructive" });
-            return;
-        }
-        setLoading(true);
-        try {
-            const finalScript = `Video Script for ${platform} (${aspectRatio})\nDuration: ${duration}s\nStyle: ${style}\n\nHook: ${hook}\n\nBeats:\n${beats}\n\nVisuals: ${visuals}\n\nCTA: ${cta}`;
-            setResult({
-                text: finalScript,
-                json: JSON.stringify({ platform, duration, style, hook, beats, visuals, cta }, null, 2)
-            });
-            toast({ title: "Video script generated!" });
-        } finally {
-            setLoading(false);
-        }
+    const copyJson = async () => {
+        if (!result) return;
+        await navigator.clipboard.writeText(result.json);
+        setCopiedJson(true);
+        setTimeout(() => setCopiedJson(false), 2000);
+        toast({ title: "JSON copied!" });
     };
 
-    const handleClear = () => {
-        setPlatform("");
-        setAspectRatio("9:16");
-        setDuration([15]);
-        setStyle("");
-        setHook("");
-        setBeats("");
-        setVisuals("");
-        setProductName("");
-        setBrandName("");
-        setCta("");
-        setAdTone("");
-        setResult(null);
-        setTouchedByUser({});
-        clearChat();
+    /* Shared card style */
+    const cardSt: React.CSSProperties = {
+        borderRadius: 12,
+        border: "1px solid rgba(99,102,241,0.3)",
+        background: "rgba(15,15,35,0.85)",
+        overflow: "hidden",
+        marginBottom: 14,
+    };
+
+    const copyBtnSt: React.CSSProperties = {
+        width: "100%", height: 38, borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)",
+        background: "rgba(255,255,255,0.05)", cursor: "pointer", fontSize: 13,
+        fontWeight: 600, color: "rgba(255,255,255,0.7)",
+        display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
     };
 
     return (
-        <div className="min-h-screen bg-background font-sans">
+        <div style={{
+            minHeight: "100vh",
+            background: "linear-gradient(160deg, #080820 0%, #0d0d2b 40%, #090920 100%)",
+            display: "flex", flexDirection: "column",
+        }}>
             <Navbar />
-            <div className="fixed inset-0 pointer-events-none z-0">
-                <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-blue-500/5 blur-[120px] rounded-full" />
-                <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full" />
+
+            {/* Page title */}
+            <div style={{ textAlign: "center", padding: "28px 24px 18px", flexShrink: 0 }}>
+                <h1 style={{ fontSize: 30, fontWeight: 800, color: "#fff", margin: 0, letterSpacing: "-0.5px" }}>
+                    Video Prompt Generator Chat Dashboard
+                </h1>
             </div>
 
-            <main className="container relative z-10 mx-auto px-4 pt-24 pb-20">
-                <div className="grid lg:grid-cols-[1fr,480px] gap-8 items-start">
-                    <div className="space-y-6">
-                        <div className="mb-2">
-                            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 mb-4 backdrop-blur-md">
-                                <Sparkles className="w-3.5 h-3.5 text-primary" />
-                                <span className="text-xs font-semibold uppercase tracking-wider text-primary">Video Engine v3.1</span>
-                            </div>
-                            <h1 className="text-5xl font-bold tracking-tight mb-4 text-white">Video Prompt Generator</h1>
-                            <p className="text-muted-foreground text-lg max-w-2xl leading-relaxed">Create high-converting video scripts and AI video prompts.</p>
-                        </div>
+            {/* 3-column body */}
+            <div style={{
+                display: "flex", flex: 1,
+                padding: "0 24px 24px",
+                gap: 18,
+                height: "calc(100vh - 160px)",
+                overflow: "hidden",
+            }}>
 
-                        <section className={cn(THEME.glassCard, "p-6 space-y-6")}>
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
-                                    <Clapperboard className="w-5 h-5" />
-                                </div>
-                                <h3 className="font-semibold text-lg">Production Details</h3>
-                            </div>
-                            <div className="grid sm:grid-cols-2 gap-5">
-                                <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Platform</Label>
-                                    <Select value={platform} onValueChange={(v) => { setFieldManually('platform', v, setPlatform); setFieldManually('aspectRatio', VIDEO_PLATFORM_ASPECT_MAP[v] || "9:16", setAspectRatio); }}>
-                                        <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
-                                        <SelectContent>{PLATFORMS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Duration ({duration}s)</Label>
-                                    <Slider value={duration} onValueChange={setDuration} max={60} step={5} className="py-4" />
-                                </div>
-                            </div>
-                        </section>
+                {/* ════════════════════════════
+            COL 1 — VIDEO HISTORY
+        ════════════════════════════ */}
+                <aside style={{
+                    width: 180, flexShrink: 0,
+                    borderRadius: 14,
+                    border: "1px solid rgba(99,102,241,0.3)",
+                    background: "rgba(10,10,30,0.8)",
+                    padding: "16px 12px",
+                    display: "flex", flexDirection: "column",
+                    overflowY: "auto",
+                }}>
+                    <p style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: "0 0 14px 2px" }}>Video History</p>
 
-                        <section className={cn(THEME.glassCard, "p-6 space-y-6")}>
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400">
-                                    <Film className="w-5 h-5" />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                        {VIDEO_HISTORY.map(item => (
+                            <div
+                                key={item.id}
+                                onClick={() => setSelectedVideo(item.id)}
+                                style={{ cursor: "pointer" }}
+                            >
+                                {/* Thumbnail */}
+                                <div style={{
+                                    width: "100%", height: 90, borderRadius: 10,
+                                    background: item.gradient,
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                    fontSize: 28, marginBottom: 6,
+                                    border: selectedVideo === item.id
+                                        ? "2px solid rgba(99,102,241,0.8)"
+                                        : "2px solid transparent",
+                                    transition: "border .15s",
+                                }}>
+                                    {item.emoji}
                                 </div>
-                                <h3 className="font-semibold text-lg">Script Details</h3>
+                                <p style={{
+                                    fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.8)",
+                                    margin: 0, lineHeight: 1.3,
+                                }}>{item.title}</p>
                             </div>
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Hook</Label>
-                                    <Input placeholder="The first 3 seconds..." value={hook} onChange={e => setFieldManually('hook', e.target.value, setHook)} className="bg-background/40 border-white/10" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Story Beats</Label>
-                                    <Textarea placeholder="Core message steps..." value={beats} onChange={e => setFieldManually('beats', e.target.value, setBeats)} className="bg-background/40 border-white/10 min-h-[100px]" />
-                                </div>
-                            </div>
-                        </section>
+                        ))}
+                    </div>
+                </aside>
 
-                        <Button onClick={handleGenerate} disabled={loading} className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold">
-                            {loading ? <RefreshCw className="mr-2 animate-spin" /> : <Sparkles className="mr-2" />}
-                            Generate Final Script
-                        </Button>
+                {/* ════════════════════════════
+            COL 2 — CHAT
+        ════════════════════════════ */}
+                <div style={{
+                    flex: 1,
+                    borderRadius: 14,
+                    border: "1px solid rgba(99,102,241,0.25)",
+                    background: "rgba(10,10,30,0.6)",
+                    display: "flex", flexDirection: "column",
+                    overflow: "hidden",
+                    position: "relative",
+                }}>
+                    {/* Purple blob glow inside chat */}
+                    <div style={{
+                        position: "absolute", top: "30%", left: "30%",
+                        width: 300, height: 300,
+                        background: "radial-gradient(circle, rgba(99,60,220,0.12) 0%, transparent 70%)",
+                        filter: "blur(40px)", pointerEvents: "none",
+                    }} />
+
+                    {/* Messages */}
+                    <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 18 }}>
+                        {/* Default welcome message */}
+                        {chatHistory.length === 0 && (
+                            <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                                <BrandAvatar />
+                                <div style={{
+                                    background: "rgba(99,102,241,0.18)",
+                                    border: "1px solid rgba(99,102,241,0.3)",
+                                    borderRadius: "4px 14px 14px 14px",
+                                    padding: "12px 16px", maxWidth: "70%",
+                                }}>
+                                    <p style={{ fontSize: 14, color: "rgba(255,255,255,0.85)", margin: 0, lineHeight: 1.6 }}>
+                                        Hello! I'm your AI Video Prompt Generator. Describe the video you want to create, and I'll craft the perfect prompt for you.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {chatHistory.map((msg, i) => (
+                            <div
+                                key={i}
+                                style={{
+                                    display: "flex",
+                                    alignItems: "flex-start",
+                                    gap: 12,
+                                    flexDirection: msg.role === "user" ? "row-reverse" : "row",
+                                }}
+                            >
+                                {msg.role === "assistant" ? (
+                                    <BrandAvatar />
+                                ) : (
+                                    /* User avatar */
+                                    <div style={{
+                                        width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+                                        background: "linear-gradient(135deg,#374151,#4b5563)",
+                                        display: "flex", alignItems: "center", justifyContent: "center",
+                                        fontSize: 13, fontWeight: 700, color: "#fff",
+                                    }}>U</div>
+                                )}
+
+                                <div style={{
+                                    background: msg.role === "assistant"
+                                        ? "rgba(99,102,241,0.18)"
+                                        : "rgba(55,65,81,0.7)",
+                                    border: msg.role === "assistant"
+                                        ? "1px solid rgba(99,102,241,0.3)"
+                                        : "1px solid rgba(255,255,255,0.08)",
+                                    borderRadius: msg.role === "assistant"
+                                        ? "4px 14px 14px 14px"
+                                        : "14px 4px 14px 14px",
+                                    padding: "12px 16px",
+                                    maxWidth: "68%",
+                                }}>
+                                    <p style={{ fontSize: 14, color: "rgba(255,255,255,0.85)", margin: 0, lineHeight: 1.6 }}>
+                                        {msg.content}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* Loading indicator */}
+                        {isLoading && (
+                            <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                                <BrandAvatar />
+                                <div style={{
+                                    background: "rgba(99,102,241,0.18)",
+                                    border: "1px solid rgba(99,102,241,0.3)",
+                                    borderRadius: "4px 14px 14px 14px",
+                                    padding: "16px",
+                                }}>
+                                    <div style={{ display: "flex", gap: 5 }}>
+                                        {[0, 1, 2].map(i => (
+                                            <div key={i} style={{
+                                                width: 7, height: 7, borderRadius: "50%",
+                                                background: "#818cf8",
+                                                animation: `videoBounce 1.2s ease-in-out ${i * 0.2}s infinite`,
+                                            }} />
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        <div ref={chatEndRef} />
                     </div>
 
-                    <div className="lg:h-[calc(100vh-120px)] lg:sticky lg:top-24">
-                        <PremiumChatbot
-                            chatHistory={chatHistory}
-                            isLoading={assistantLoading}
-                            credits={credits}
-                            errorStatus={errorStatus}
-                            onSendMessage={sendMessage}
-                            result={result}
-                            suggestions={[
-                                "UGC style unboxing for TikTok",
-                                "Cinematic brand story for YouTube",
-                                "Fast-paced sales reel for IG",
-                                "Professional LinkedIn service intro"
-                            ]}
+                    {/* Input bar */}
+                    <div style={{
+                        flexShrink: 0,
+                        padding: "14px 20px",
+                        borderTop: "1px solid rgba(99,102,241,0.2)",
+                        display: "flex", gap: 10, alignItems: "center",
+                        background: "rgba(10,10,30,0.8)",
+                    }}>
+                        <input
+                            value={input}
+                            onChange={e => setInput(e.target.value)}
+                            onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
+                            placeholder="Type your video idea here or ask for suggestions..."
+                            style={{
+                                flex: 1, height: 46, padding: "0 18px", borderRadius: 30,
+                                fontSize: 14, color: "rgba(255,255,255,0.75)",
+                                background: "rgba(255,255,255,0.05)",
+                                border: "1px solid rgba(99,102,241,0.25)", outline: "none",
+                            }}
                         />
-                        <div className="mt-4 px-2">
-                            <Button variant="ghost" size="sm" onClick={() => setTouchedByUser({})} className="text-[10px] uppercase tracking-widest text-muted-foreground/40 hover:text-primary transition-colors h-6">
-                                <RefreshCw className="w-3 h-3 mr-1.5" /> Reset Flags
-                            </Button>
-                        </div>
+                        <button
+                            onClick={handleSend}
+                            disabled={isLoading || !input.trim()}
+                            style={{
+                                width: 46, height: 46, borderRadius: "50%", border: "none",
+                                cursor: "pointer", flexShrink: 0,
+                                background: "linear-gradient(135deg, #6366f1, #4f46e5)",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                boxShadow: "0 4px 16px rgba(99,102,241,0.5)",
+                                opacity: isLoading || !input.trim() ? 0.5 : 1,
+                            }}
+                        >
+                            <Send style={{ width: 18, height: 18, color: "#fff" }} />
+                        </button>
                     </div>
                 </div>
-            </main>
+
+                {/* ════════════════════════════
+            COL 3 — VIDEO OUTPUT PANEL
+        ════════════════════════════ */}
+                <div style={{
+                    width: 310, flexShrink: 0,
+                    borderRadius: 14,
+                    border: "1px solid rgba(99,102,241,0.3)",
+                    background: "rgba(10,10,30,0.8)",
+                    display: "flex", flexDirection: "column",
+                    overflow: "hidden",
+                }}>
+                    {/* Panel header */}
+                    <div style={{
+                        padding: "16px 18px",
+                        borderBottom: "1px solid rgba(99,102,241,0.2)",
+                        flexShrink: 0,
+                    }}>
+                        <p style={{ fontSize: 16, fontWeight: 700, color: "#fff", margin: 0 }}>Video Output Panel</p>
+                    </div>
+
+                    <div style={{ flex: 1, overflowY: "auto", padding: "14px" }}>
+
+                        {/* Human Prompt card */}
+                        <div style={cardSt}>
+                            {/* Card header */}
+                            <div style={{
+                                padding: "10px 14px",
+                                background: "linear-gradient(90deg, rgba(99,102,241,0.35), rgba(139,92,246,0.2))",
+                                borderBottom: "1px solid rgba(99,102,241,0.2)",
+                            }}>
+                                <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: 0 }}>
+                                    Human Prompt <span style={{ color: "rgba(255,255,255,0.5)", fontWeight: 400 }}>(Optimized for Sora/Runway)</span>
+                                </p>
+                            </div>
+                            <div style={{ padding: "12px 14px" }}>
+                                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 1.65, margin: "0 0 14px" }}>
+                                    {result?.text ?? "Your video prompt will appear here after you describe your concept in the chat…"}
+                                </p>
+                                <button
+                                    onClick={copyPrompt}
+                                    disabled={!result}
+                                    style={{ ...copyBtnSt, opacity: result ? 1 : 0.4 }}
+                                >
+                                    {copiedPrompt ? <Check style={{ width: 14, height: 14, color: "#4ade80" }} /> : <Copy style={{ width: 14, height: 14 }} />}
+                                    {copiedPrompt ? "Copied!" : "Copy Prompt"}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* JSON Prompt card */}
+                        <div style={cardSt}>
+                            <div style={{
+                                padding: "10px 14px",
+                                background: "linear-gradient(90deg, rgba(99,102,241,0.25), rgba(139,92,246,0.15))",
+                                borderBottom: "1px solid rgba(99,102,241,0.2)",
+                            }}>
+                                <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: 0 }}>JSON Prompt</p>
+                            </div>
+                            <div style={{ padding: "12px 14px" }}>
+                                <div style={{
+                                    background: "#07071a", borderRadius: 8, padding: "12px",
+                                    maxHeight: 240, overflowY: "auto", marginBottom: 14,
+                                }}>
+                                    <pre style={{
+                                        fontSize: 11.5, color: "rgba(255,255,255,0.75)", fontFamily: "'Fira Code', monospace",
+                                        lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap",
+                                    }}>
+                                        {result?.json ?? `{\n  "type": "video",\n  "description": "...",\n  "style": "cinematic, photorealistic, 4K",\n  "elements": ["skyscrapers", "flying vehicles"],\n  "atmosphere": "bustling, vibrant"\n}`}
+                                    </pre>
+                                </div>
+                                <button
+                                    onClick={copyJson}
+                                    disabled={!result}
+                                    style={{ ...copyBtnSt, opacity: result ? 1 : 0.4 }}
+                                >
+                                    {copiedJson ? <Check style={{ width: 14, height: 14, color: "#4ade80" }} /> : <Copy style={{ width: 14, height: 14 }} />}
+                                    {copiedJson ? "Copied!" : "Copy JSON"}
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
+            <style>{`
+        @keyframes videoBounce {
+          0%, 60%, 100% { transform: translateY(0); }
+          30% { transform: translateY(-7px); }
+        }
+      `}</style>
         </div>
     );
 }
