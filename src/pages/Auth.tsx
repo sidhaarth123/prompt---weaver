@@ -3,13 +3,9 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { Zap, Eye, EyeOff, Mail, RefreshCw, KeyRound, ArrowLeft, Check, Star } from "lucide-react";
-import { THEME, cn } from "@/lib/theme";
-import { motion } from "framer-motion";
+import { Zap, Eye, EyeOff, Mail, RefreshCw, Star } from "lucide-react";
+import { cn } from "@/lib/theme";
 
 function friendlyError(message: string) {
   const m = message.toLowerCase();
@@ -20,41 +16,60 @@ function friendlyError(message: string) {
   return message;
 }
 
+/* ─── Reusable styled input ─── */
+function Field({
+  id, label, type, value, onChange, placeholder, rightSlot, autoComplete,
+}: {
+  id: string; label: string; type: string; value: string;
+  onChange: (v: string) => void; placeholder?: string;
+  rightSlot?: React.ReactNode; autoComplete?: string;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <label htmlFor={id} className="text-[13px] font-semibold text-white/80">{label}</label>
+        {rightSlot}
+      </div>
+      <input
+        id={id}
+        type={type}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        required
+        className={cn(
+          "w-full h-12 px-4 rounded-xl text-sm text-white placeholder:text-white/20",
+          "border border-white/[0.09] focus:border-indigo-500/70 focus:outline-none",
+          "bg-[#14141f] transition-all duration-200",
+          "focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
+        )}
+      />
+    </div>
+  );
+}
+
 export default function Auth() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get("tab") === "signup" ? "signup" : "login";
 
-  // Login form (separate state)
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [showLoginPassword, setShowLoginPassword] = useState(false);
 
-  // Signup form (separate state)
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupConfirm, setSignupConfirm] = useState("");
-  const [showSignupPassword, setShowSignupPassword] = useState(false);
-  const [showSignupConfirm, setShowSignupConfirm] = useState(false);
 
-  // Forgot password
-  const [forgotEmail, setForgotEmail] = useState("");
-
-  // UX states
   const [activeTab, setActiveTab] = useState<"login" | "signup">(defaultTab as any);
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
-
-  // Post-signup state
   const [signupSubmittedEmail, setSignupSubmittedEmail] = useState<string | null>(null);
   const [resendLoading, setResendLoading] = useState(false);
 
-  // Removed automatic redirect on mount to allow forced account selection
-
-  useEffect(() => {
-    setActiveTab(defaultTab as any);
-  }, [defaultTab]);
+  useEffect(() => { setActiveTab(defaultTab as any); }, [defaultTab]);
 
   const origin = useMemo(() => window.location.origin, []);
 
@@ -68,37 +83,18 @@ export default function Auth() {
   const handleGoogleLogin = async () => {
     try {
       setOauthLoading(true);
-
-      // Force fresh session locally
       await supabase.auth.signOut({ scope: "local" });
-
-      // Clear Supabase localStorage keys
       Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('sb-') || key.includes('supabase')) {
-          localStorage.removeItem(key);
-        }
+        if (key.startsWith("sb-") || key.includes("supabase")) localStorage.removeItem(key);
       });
-
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: `${origin}/auth/callback`,
-          queryParams: {
-            prompt: "select_account",
-            access_type: "offline",
-            include_granted_scopes: "true",
-            max_age: "0"
-          },
+          queryParams: { prompt: "select_account", access_type: "offline", include_granted_scopes: "true", max_age: "0" },
         },
       });
-
-      if (error) {
-        toast({
-          title: "Google sign-in failed",
-          description: friendlyError(error.message),
-          variant: "destructive",
-        });
-      }
+      if (error) toast({ title: "Google sign-in failed", description: friendlyError(error.message), variant: "destructive" });
     } finally {
       setOauthLoading(false);
     }
@@ -107,389 +103,395 @@ export default function Auth() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email: loginEmail.trim(),
-      password: loginPassword,
-    });
-
+    const { error } = await supabase.auth.signInWithPassword({ email: loginEmail.trim(), password: loginPassword });
     setLoading(false);
-
-    if (error) {
-      toast({
-        title: "Login failed",
-        description: friendlyError(error.message),
-        variant: "destructive",
-      });
-      return;
-    }
-
+    if (error) { toast({ title: "Login failed", description: friendlyError(error.message), variant: "destructive" }); return; }
     navigate("/image-generator", { replace: true });
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (signupPassword.length < 8) {
-      toast({
-        title: "Weak password",
-        description: "Password must be at least 8 characters.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (signupPassword !== signupConfirm) {
-      toast({
-        title: "Passwords do not match",
-        description: "Please confirm your password correctly.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    if (signupPassword.length < 8) { toast({ title: "Weak password", description: "Password must be at least 8 characters.", variant: "destructive" }); return; }
+    if (signupPassword !== signupConfirm) { toast({ title: "Passwords do not match", description: "Please confirm your password correctly.", variant: "destructive" }); return; }
     setLoading(true);
-
-    const { error } = await supabase.auth.signUp({
-      email: signupEmail.trim(),
-      password: signupPassword,
-      options: {
-        emailRedirectTo: `${origin}/auth/callback`,
-      },
-    });
-
+    const { error } = await supabase.auth.signUp({ email: signupEmail.trim(), password: signupPassword, options: { emailRedirectTo: `${origin}/auth/callback` } });
     setLoading(false);
-
-    if (error) {
-      toast({
-        title: "Signup failed",
-        description: friendlyError(error.message),
-        variant: "destructive",
-      });
-      return;
-    }
-
+    if (error) { toast({ title: "Signup failed", description: friendlyError(error.message), variant: "destructive" }); return; }
     setSignupSubmittedEmail(signupEmail.trim());
-    toast({
-      title: "Check your email",
-      description: "We sent a confirmation link. Verify your email to activate your account.",
-    });
+    toast({ title: "Check your email", description: "We sent a confirmation link." });
   };
 
   const handleResend = async () => {
     if (!signupSubmittedEmail) return;
     setResendLoading(true);
-
-    const { error } = await supabase.auth.resend({
-      type: "signup",
-      email: signupSubmittedEmail,
-    });
-
+    const { error } = await supabase.auth.resend({ type: "signup", email: signupSubmittedEmail });
     setResendLoading(false);
-
-    if (error) {
-      toast({
-        title: "Resend failed",
-        description: friendlyError(error.message),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    toast({
-      title: "Email resent",
-      description: "Check your inbox (and spam folder).",
-    });
+    if (error) { toast({ title: "Resend failed", description: friendlyError(error.message), variant: "destructive" }); return; }
+    toast({ title: "Email resent", description: "Check your inbox (and spam folder)." });
   };
 
   const handleForgotPassword = async () => {
-    const email = (forgotEmail || loginEmail).trim();
-    if (!email) {
-      toast({
-        title: "Email required",
-        description: "Enter your email to reset your password.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    const email = loginEmail.trim();
+    if (!email) { toast({ title: "Email required", description: "Enter your email first.", variant: "destructive" }); return; }
     setLoading(true);
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${origin}/auth/callback`,
-    });
-
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${origin}/auth/callback` });
     setLoading(false);
-
-    if (error) {
-      toast({
-        title: "Reset failed",
-        description: friendlyError(error.message),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    toast({
-      title: "Reset link sent",
-      description: "Check your email for the password reset link.",
-    });
+    if (error) { toast({ title: "Reset failed", description: friendlyError(error.message), variant: "destructive" }); return; }
+    toast({ title: "Reset link sent", description: "Check your email for the password reset link." });
   };
 
-
-  const OAuthBlock = () => (
-    <>
-      {user && (
-        <div className="mb-6 p-4 rounded-xl border border-indigo-500/30 bg-indigo-500/10 animate-in fade-in slide-in-from-top-2">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-[10px] font-bold">
-                {user.email?.[0].toUpperCase()}
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-white leading-none">Already logged in</span>
-                <span className="text-[10px] text-muted-foreground">{user.email}</span>
-              </div>
-            </div>
-          </div>
-          <Button
-            onClick={() => navigate("/image-generator")}
-            className="w-full h-9 bg-indigo-600 hover:bg-indigo-700 text-xs font-bold"
-          >
-            Continue to Workspace
-          </Button>
-          <div className="relative my-4">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
-            <div className="relative flex justify-center text-[9px] uppercase tracking-widest"><span className="bg-background px-2 text-muted-foreground">Or switch account</span></div>
-          </div>
-        </div>
-      )}
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full h-11 gap-3 bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 transition-all font-medium text-white"
-        onClick={handleGoogleLogin}
-        disabled={oauthLoading || loading}
-      >
-        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-white shrink-0">
-          <img
-            src="/google-logo.svg"
-            alt="Google"
-            width="14"
-            height="14"
-            className="object-contain"
-          />
-        </div>
-        {oauthLoading ? "Connecting..." : "Continue with Google"}
-      </Button>
-
-      <button
-        type="button"
-        onClick={handleGoogleLogin}
-        className="mt-2 text-[11px] text-indigo-400 hover:text-indigo-300 font-medium transition-colors w-full text-center"
-      >
-        Use a different Google account
-      </button>
-
-      <div className="my-6 flex items-center gap-3">
-        <div className="h-px w-full bg-white/10" />
-        <span className="text-xs text-muted-foreground uppercase tracking-widest font-medium px-2">OR</span>
-        <div className="h-px w-full bg-white/10" />
-      </div>
-    </>
-  );
-
-
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* LEFT PANEL - BRANDING (Hidden on Mobile) */}
-      <div className="hidden lg:flex flex-col justify-between w-1/2 bg-black border-r border-white/5 relative overflow-hidden p-12">
-        {/* Ambient Glow */}
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/20 blur-[150px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+    <div className="min-h-screen flex" style={{ background: "#0a0a12" }}>
 
-        <div className="relative z-10">
-          <Link to="/" className="inline-flex items-center gap-2 mb-12 group">
-            <div className="p-2 rounded-lg bg-indigo-500/20 group-hover:bg-indigo-500/30 transition-colors">
-              <Zap className="h-6 w-6 text-indigo-400 group-hover:text-indigo-300" />
-            </div>
-            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">Prompt Weaver</span>
-          </Link>
+      {/* ════════════════════════════════════════════════
+          LEFT PANEL — Brand + Social Proof
+      ════════════════════════════════════════════════ */}
+      <div
+        className="hidden lg:flex flex-col w-[48%] relative overflow-hidden p-14"
+        style={{
+          background: "linear-gradient(145deg, #1e1557 0%, #2d1f8a 30%, #3b2abf 58%, #271a82 80%, #160f55 100%)"
+        }}
+      >
+        {/* ── Multiple layered glow blobs ── */}
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            top: "-120px", right: "-120px",
+            width: "520px", height: "520px",
+            background: "radial-gradient(circle, rgba(100,120,255,0.45) 0%, transparent 70%)",
+            filter: "blur(40px)",
+          }}
+        />
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            bottom: "60px", left: "-80px",
+            width: "420px", height: "420px",
+            background: "radial-gradient(circle, rgba(80,60,220,0.35) 0%, transparent 70%)",
+            filter: "blur(50px)",
+          }}
+        />
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            top: "50%", left: "50%",
+            transform: "translate(-50%,-50%)",
+            width: "600px", height: "400px",
+            background: "radial-gradient(ellipse, rgba(110,90,255,0.15) 0%, transparent 70%)",
+            filter: "blur(30px)",
+          }}
+        />
 
-          <h1 className="text-4xl font-bold text-white mb-6 leading-tight">
-            Turn Ideas into <br />
-            <span className="text-indigo-400">Production-Ready Assets</span>
+        {/* Star-grid subtle overlay */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.06]"
+          style={{
+            backgroundImage: `radial-gradient(circle, white 1px, transparent 1px)`,
+            backgroundSize: "36px 36px",
+          }}
+        />
+
+        {/* ── Logo ── */}
+        <Link to="/" className="relative z-10 inline-flex items-center gap-2.5 mb-16 w-fit group">
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg, rgba(120,130,255,0.3), rgba(100,80,240,0.2))", boxShadow: "0 0 20px rgba(120,130,255,0.3)", border: "1px solid rgba(255,255,255,0.15)" }}
+          >
+            <Zap className="h-4.5 w-4.5 text-white" style={{ width: "18px", height: "18px" }} />
+          </div>
+          <span className="text-[17px] font-bold text-white tracking-tight drop-shadow-lg">Prompt Weaver</span>
+        </Link>
+
+        {/* ── Headline ── */}
+        <div className="relative z-10 flex-1">
+          <h1 className="text-[42px] font-extrabold text-white leading-[1.15] mb-5 drop-shadow-2xl">
+            Turn Ideas into
+            <br />
+            <span className="text-white">Production-Ready</span>
+            <br />
+            <span className="text-white">Assets</span>
           </h1>
-          <p className="text-lg text-white/50 max-w-md leading-relaxed">
+          <p className="text-[15px] text-white/60 leading-relaxed max-w-xs">
             Join thousands of world-class creators and teams building the future with Prompt Weaver.
           </p>
         </div>
 
-        {/* Testimonial / Social Proof */}
-        <div className="relative z-10 space-y-8">
-          <div className="p-6 rounded-2xl border border-white/5 bg-white/5 backdrop-blur-md">
-            <div className="flex gap-1 text-amber-400 mb-4">
-              {[1, 2, 3, 4, 5].map(i => <Star key={i} className="w-4 h-4 fill-current" />)}
+        {/* ── Testimonial Card ── */}
+        <div className="relative z-10 mt-8">
+          <div
+            className="p-6 rounded-2xl"
+            style={{
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.10)",
+              backdropFilter: "blur(20px)",
+              boxShadow: "0 8px 40px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)",
+            }}
+          >
+            {/* Stars */}
+            <div className="flex gap-1 mb-4">
+              {[1, 2, 3, 4, 5].map(i => (
+                <Star key={i} className="w-4 h-4" style={{ fill: "#FBBF24", color: "#FBBF24" }} />
+              ))}
             </div>
-            <p className="text-white/80 italic mb-4">"The structured JSON output has completely transformed our AI workflow. It's not just a prompt generator, it's an engineering tool."</p>
+            <p className="text-[14px] text-white/80 italic leading-relaxed mb-5">
+              "The structured JSON output has completely transformed our AI workflow. It's not just a prompt generator, it's an engineering tool."
+            </p>
+            {/* Avatar row */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center font-bold text-white text-sm">
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-bold text-white shrink-0"
+                style={{ background: "linear-gradient(135deg, #7c3aed, #4f46e5)", boxShadow: "0 0 14px rgba(99,60,220,0.5)" }}
+              >
                 JD
               </div>
               <div>
-                <div className="font-semibold text-white text-sm">John Doe</div>
-                <div className="text-xs text-white/40">Lead AI Engineer @ TechCorp</div>
+                <p className="text-[13px] font-semibold text-white leading-none mb-0.5">John Doe</p>
+                <p className="text-[11px] text-white/40">Lead AI Engineer @ TechCorp</p>
               </div>
             </div>
           </div>
-
-          <div className="flex items-center gap-4 text-xs text-white/30 font-medium tracking-widest uppercase">
-            <span>Trusted By</span>
-            <div className="h-px flex-1 bg-white/10" />
-            <span>Netflix</span>
-            <span>Spotify</span>
-            <span>Linear</span>
-          </div>
+          {/* Trusted By section intentionally removed per user request */}
         </div>
       </div>
 
 
-      {/* RIGHT PANEL - FORM */}
-      <div className="flex-1 flex flex-col justify-center items-center p-4 sm:p-8 relative">
-        <Link to="/" className="absolute top-8 right-8 text-sm text-muted-foreground hover:text-white transition-colors lg:hidden">
-          Back to Home
-        </Link>
+      {/* ════════════════════════════════════════════════
+          RIGHT PANEL — Auth Form
+      ════════════════════════════════════════════════ */}
+      <div
+        className="flex-1 flex flex-col justify-center items-center px-8 sm:px-16 relative"
+        style={{ background: "#0e0e1a" }}
+      >
+        {/* Subtle top-right glow on right panel */}
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            top: 0, right: 0,
+            width: "300px", height: "300px",
+            background: "radial-gradient(circle, rgba(80,80,200,0.08) 0%, transparent 70%)",
+            filter: "blur(40px)",
+          }}
+        />
 
-        <div className="w-full max-w-md space-y-8">
-          <div className="text-center lg:text-left">
-            <h2 className="text-2xl font-bold text-white mb-2">
+        <div className="w-full max-w-[420px] relative z-10">
+
+          {/* ── Tab Switcher ── */}
+          <div
+            className="flex rounded-xl p-1 mb-9"
+            style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}
+          >
+            {(["login", "signup"] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className="flex-1 h-10 rounded-lg text-[13px] font-semibold transition-all duration-200"
+                style={
+                  activeTab === tab
+                    ? { background: "rgba(255,255,255,0.10)", color: "#fff", boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }
+                    : { color: "rgba(255,255,255,0.35)" }
+                }
+              >
+                {tab === "login" ? "Log In" : "Sign Up"}
+              </button>
+            ))}
+          </div>
+
+          {/* ── Heading ── */}
+          <div className="mb-7">
+            <h2 className="text-[26px] font-bold text-white mb-1.5">
               {activeTab === "login" ? "Welcome back" : "Create an account"}
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-[13px] text-white/35">
               {activeTab === "login" ? "Enter your details to access your workspace." : "Start your 14-day free trial today."}
             </p>
           </div>
 
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 h-12 bg-black border border-white/10 rounded-lg p-1 mb-8">
-              <TabsTrigger value="login" className="rounded-md data-[state=active]:bg-white/10 data-[state=active]:text-white transition-all font-medium">Log In</TabsTrigger>
-              <TabsTrigger value="signup" className="rounded-md data-[state=active]:bg-white/10 data-[state=active]:text-white transition-all font-medium">Sign Up</TabsTrigger>
-            </TabsList>
-
-            <div className="relative min-h-[400px]">
-              <TabsContent value="login" className="absolute inset-0 mt-0 data-[state=inactive]:hidden animate-in fade-in slide-in-from-left-4 duration-300">
-                <OAuthBlock />
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="login-email">Email</Label>
-                    <Input
-                      id="login-email"
-                      type="email"
-                      required
-                      value={loginEmail}
-                      onChange={e => setLoginEmail(e.target.value)}
-                      className="bg-black/40 border-white/10 focus:border-indigo-500 h-11"
-                      placeholder="name@work-email.com"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="login-password">Password</Label>
-                      <button type="button" onClick={handleForgotPassword} className="text-xs text-indigo-400 hover:text-indigo-300">Forgot password?</button>
-                    </div>
-                    <div className="relative">
-                      <Input
-                        id="login-password"
-                        type={showLoginPassword ? "text" : "password"}
-                        required
-                        value={loginPassword}
-                        onChange={e => setLoginPassword(e.target.value)}
-                        className="bg-black/40 border-white/10 focus:border-indigo-500 h-11 pr-10"
-                        placeholder="Enter your password"
-                      />
-                      <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white">
-                        {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-                  <Button type="submit" className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg" disabled={loading || oauthLoading}>
-                    {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Sign In"}
-                  </Button>
-                </form>
-              </TabsContent>
-
-              <TabsContent value="signup" className="absolute inset-0 mt-0 data-[state=inactive]:hidden animate-in fade-in slide-in-from-right-4 duration-300">
-                <OAuthBlock />
-                {signupSubmittedEmail ? (
-                  <div className="text-center space-y-4 py-8">
-                    <div className="w-16 h-16 rounded-full bg-indigo-500/20 flex items-center justify-center mx-auto text-indigo-400">
-                      <Mail className="w-8 h-8" />
-                    </div>
-                    <h3 className="text-xl font-bold text-white">Check your email</h3>
-                    <p className="text-muted-foreground">We sent a verification link to <span className="text-white">{signupSubmittedEmail}</span></p>
-                    <Button onClick={handleResend} disabled={resendLoading} variant="outline" className="w-full border-white/10 hover:bg-white/5">
-                      {resendLoading ? "Sending..." : "Resend Email"}
-                    </Button>
-                    <Button onClick={() => setSignupSubmittedEmail(null)} variant="ghost" className="text-sm">Use different email</Button>
-                  </div>
-                ) : (
-                  <form onSubmit={handleSignup} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-email">Email</Label>
-                      <Input
-                        id="signup-email"
-                        type="email"
-                        required
-                        value={signupEmail}
-                        onChange={e => setSignupEmail(e.target.value)}
-                        className="bg-black/40 border-white/10 focus:border-indigo-500 h-11"
-                        placeholder="name@work-email.com"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="signup-password">Password</Label>
-                        <Input
-                          id="signup-password"
-                          type="password"
-                          required
-                          value={signupPassword}
-                          onChange={e => setSignupPassword(e.target.value)}
-                          className="bg-black/40 border-white/10 focus:border-indigo-500 h-11"
-                          placeholder="8+ chars"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="signup-confirm">Confirm</Label>
-                        <Input
-                          id="signup-confirm"
-                          type="password"
-                          required
-                          value={signupConfirm}
-                          onChange={e => setSignupConfirm(e.target.value)}
-                          className="bg-black/40 border-white/10 focus:border-indigo-500 h-11"
-                          placeholder="Repeat"
-                        />
-                      </div>
-                    </div>
-                    {signupPassword && signupConfirm && signupPassword !== signupConfirm && (
-                      <p className="text-xs text-red-400">Passwords do not match</p>
-                    )}
-                    <Button type="submit" className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg" disabled={loading || oauthLoading || !isSignupValid}>
-                      {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Create Account"}
-                    </Button>
-                    <div className="text-xs text-center text-muted-foreground">
-                      By joining, you agree to our <Link to="/terms" className="underline hover:text-white">Terms</Link> and <Link to="/privacy" className="underline hover:text-white">Privacy Policy</Link>.
-                    </div>
-                  </form>
-                )}
-              </TabsContent>
+          {/* ── Already logged in banner ── */}
+          {user && (
+            <div className="mb-5 p-4 rounded-xl" style={{ background: "rgba(99,102,241,0.10)", border: "1px solid rgba(99,102,241,0.25)" }}>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-[11px] font-bold text-white">
+                  {user.email?.[0].toUpperCase()}
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold text-white leading-none">Already logged in</p>
+                  <p className="text-[10px] text-white/40">{user.email}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate("/image-generator")}
+                className="w-full h-9 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-90"
+                style={{ background: "linear-gradient(90deg, #4f46e5, #6d28d9)" }}
+              >
+                Continue to Workspace
+              </button>
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10" /></div>
+                <div className="relative flex justify-center"><span className="px-3 text-[10px] text-white/25 uppercase tracking-widest" style={{ background: "#0e0e1a" }}>or switch account</span></div>
+              </div>
             </div>
-          </Tabs>
+          )}
+
+          {/* ── Google Button ── */}
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={oauthLoading || loading}
+            className="w-full h-12 flex items-center justify-center gap-3 rounded-xl text-[13px] font-semibold text-white transition-all duration-200 hover:opacity-90 disabled:opacity-50 mb-2"
+            style={{
+              background: "linear-gradient(180deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0.04) 100%)",
+              border: "1px solid rgba(255,255,255,0.10)",
+              boxShadow: "0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)",
+            }}
+          >
+            <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center shrink-0">
+              <img src="/google-logo.svg" alt="Google" width={13} height={13} className="object-contain" />
+            </div>
+            {oauthLoading ? "Connecting…" : "Continue with Google"}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            className="w-full text-center text-[11px] text-white/30 hover:text-white/60 transition-colors mb-5"
+          >
+            Use a different Google account
+          </button>
+
+          {/* ── OR divider ── */}
+          <div className="flex items-center gap-3 mb-5">
+            <div className="h-px flex-1" style={{ background: "rgba(255,255,255,0.08)" }} />
+            <span className="text-[11px] font-medium text-white/25 uppercase tracking-widest">OR</span>
+            <div className="h-px flex-1" style={{ background: "rgba(255,255,255,0.08)" }} />
+          </div>
+
+          {/* ═══════════════════════
+              LOGIN FORM
+          ═══════════════════════ */}
+          {activeTab === "login" && (
+            <form onSubmit={handleLogin} className="space-y-4">
+              <Field
+                id="login-email" label="Email" type="email"
+                value={loginEmail} onChange={setLoginEmail}
+                placeholder="Email" autoComplete="email"
+              />
+              <Field
+                id="login-password" label="Password"
+                type={showLoginPassword ? "text" : "password"}
+                value={loginPassword} onChange={setLoginPassword}
+                placeholder="Password" autoComplete="current-password"
+                rightSlot={
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    className="text-[11px] font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+                  >
+                    Forgot password?
+                  </button>
+                }
+              />
+
+              {/* Sign In button */}
+              <button
+                type="submit"
+                disabled={loading || oauthLoading}
+                className="w-full h-12 rounded-xl text-[14px] font-semibold text-white transition-all duration-200 hover:opacity-90 active:scale-[0.99] disabled:opacity-40 mt-2"
+                style={{
+                  background: "linear-gradient(90deg, #3b82f6 0%, #6d28d9 100%)",
+                  boxShadow: "0 4px 20px rgba(99,60,220,0.40), 0 1px 0 rgba(255,255,255,0.06) inset",
+                }}
+              >
+                {loading ? <RefreshCw className="w-4 h-4 animate-spin mx-auto" /> : "Sign In"}
+              </button>
+            </form>
+          )}
+
+          {/* ═══════════════════════
+              SIGNUP FORM
+          ═══════════════════════ */}
+          {activeTab === "signup" && (
+            <>
+              {signupSubmittedEmail ? (
+                <div className="text-center space-y-4 py-6">
+                  <div
+                    className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
+                    style={{ background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)" }}
+                  >
+                    <Mail className="w-7 h-7 text-indigo-400" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white">Check your email</h3>
+                  <p className="text-sm text-white/40">
+                    Verification link sent to{" "}
+                    <span className="text-white font-medium">{signupSubmittedEmail}</span>
+                  </p>
+                  <button
+                    onClick={handleResend}
+                    disabled={resendLoading}
+                    className="w-full h-11 rounded-xl text-[13px] font-semibold text-white/80 border border-white/10 hover:bg-white/5 transition-colors"
+                  >
+                    {resendLoading ? "Sending…" : "Resend Email"}
+                  </button>
+                  <button onClick={() => setSignupSubmittedEmail(null)} className="text-sm text-white/30 hover:text-white/60 transition-colors">
+                    Use different email
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleSignup} className="space-y-4">
+                  <Field
+                    id="signup-email" label="Email" type="email"
+                    value={signupEmail} onChange={setSignupEmail}
+                    placeholder="name@work-email.com" autoComplete="email"
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label htmlFor="signup-password" className="text-[13px] font-semibold text-white/80">Password</label>
+                      <input
+                        id="signup-password" type="password" required
+                        value={signupPassword} onChange={e => setSignupPassword(e.target.value)}
+                        placeholder="8+ chars" autoComplete="new-password"
+                        className="w-full h-12 px-4 rounded-xl text-sm text-white placeholder:text-white/20 border border-white/[0.09] focus:border-indigo-500/70 focus:outline-none bg-[#14141f] transition-all focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label htmlFor="signup-confirm" className="text-[13px] font-semibold text-white/80">Confirm</label>
+                      <input
+                        id="signup-confirm" type="password" required
+                        value={signupConfirm} onChange={e => setSignupConfirm(e.target.value)}
+                        placeholder="Repeat" autoComplete="new-password"
+                        className="w-full h-12 px-4 rounded-xl text-sm text-white placeholder:text-white/20 border border-white/[0.09] focus:border-indigo-500/70 focus:outline-none bg-[#14141f] transition-all focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
+                      />
+                    </div>
+                  </div>
+
+                  {signupPassword && signupConfirm && signupPassword !== signupConfirm && (
+                    <p className="text-xs text-red-400">Passwords do not match</p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={loading || oauthLoading || !isSignupValid}
+                    className="w-full h-12 rounded-xl text-[14px] font-semibold text-white transition-all duration-200 hover:opacity-90 active:scale-[0.99] disabled:opacity-40 mt-2"
+                    style={{
+                      background: "linear-gradient(90deg, #3b82f6 0%, #6d28d9 100%)",
+                      boxShadow: "0 4px 20px rgba(99,60,220,0.40), 0 1px 0 rgba(255,255,255,0.06) inset",
+                    }}
+                  >
+                    {loading ? <RefreshCw className="w-4 h-4 animate-spin mx-auto" /> : "Create Account"}
+                  </button>
+
+                  <p className="text-[11px] text-center text-white/25">
+                    By joining, you agree to our{" "}
+                    <Link to="/terms" className="underline hover:text-white/60 transition-colors">Terms</Link>{" "}and{" "}
+                    <Link to="/privacy" className="underline hover:text-white/60 transition-colors">Privacy Policy</Link>.
+                  </p>
+                </form>
+              )}
+            </>
+          )}
         </div>
 
-        <div className="absolute bottom-6 left-0 right-0 text-center">
-          <p className="text-xs text-white/20">© 2024 Prompt Weaver Inc.</p>
-        </div>
+        {/* ── Footer ── */}
+        <p className="absolute bottom-6 text-[11px] text-white/20">© 2024 Prompt Weaver Inc.</p>
       </div>
     </div>
   );

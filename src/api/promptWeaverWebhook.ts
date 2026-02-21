@@ -1,9 +1,32 @@
-import { supabase } from "@/integrations/supabase/client";
-import { getValidSession, AuthRequiredError } from "@/lib/authUtils";
-import { workflows, WorkflowType } from "@/config/workflows";
+/**
+ * src/api/promptWeaverWebhook.ts
+ *
+ * Thin adapter that maps N8nClient responses to the shape
+ * that usePromptWeaverChat and PremiumChatbot already expect.
+ *
+ * All auth/retry/error logic lives in src/lib/n8nClient.ts.
+ */
+
+import { callN8nWorkflow, N8nError } from "@/lib/n8nClient";
+import { WorkflowType } from "@/config/workflows";
+import { N8N_URLS } from "@/config/api";
+
+// ─── Response shape (unchanged — UI depends on this) ──────────────────────────
+export type ErrorCode =
+    | "UNAUTHORIZED"
+    | "INSUFFICIENT_CREDITS"
+    | "RATE_LIMITED"
+    | "BAD_REQUEST"
+    | "SERVER_ERROR"
+    | "NETWORK_ERROR"
+    | "CONFIG_MISSING"
+    | "PARSE_ERROR";
 
 export interface WebhookClientResponse {
     success: boolean;
+    code?: ErrorCode | string;
+    error?: string;
+    message?: string;
     ready?: boolean;
     questions?: string[];
     final?: any;
@@ -13,121 +36,76 @@ export interface WebhookClientResponse {
         [key: string]: any;
     };
     remaining_credits?: number;
-    error?: string;
-    message?: string;
-    code?: string;
+    output?: string;
+    requestId?: string;
+    // Multi-turn conversation tracking
+    conversation_id?: string;
 }
 
-// ─── Internal fetch wrapper ────────────────────────────────────────────────────
-
-async function doFetch(url: string, message: string, token: string): Promise<Response> {
-    return fetch(url, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ message }),
-    });
+// ─── Map N8nError codes → legacy UI codes ─────────────────────────────────────
+function mapN8nCode(code: string): ErrorCode {
+    switch (code) {
+        case "NOT_LOGGED_IN":
+        case "SESSION_EXPIRED": return "UNAUTHORIZED";
+        case "INSUFFICIENT_CREDITS": return "INSUFFICIENT_CREDITS";
+        case "RATE_LIMITED": return "RATE_LIMITED";
+        case "BAD_REQUEST": return "BAD_REQUEST";
+        case "BAD_RESPONSE":
+        case "PARSE_ERROR": return "PARSE_ERROR";
+        case "NETWORK_ERROR": return "NETWORK_ERROR";
+        default: return "SERVER_ERROR";
+    }
 }
 
-// ─── Public API ────────────────────────────────────────────────────────────────
+// ─── Public API ───────────────────────────────────────────────────────────────
 
-/**
- * Calls an n8n workflow webhook with:
- *  - A valid Supabase access_token (auto-refreshed by the client)
- *  - One automatic retry after token refresh on HTTP 401
- *  - Typed error codes so the UI can respond correctly
- */
 export async function callWorkflowWebhook(
     workflowType: WorkflowType,
     message: string,
-    _isRetry = false
+    conversationId?: string  // forwarded on every subsequent turn
 ): Promise<WebhookClientResponse> {
+    // Guard: ensure URL is configured
+    const url = N8N_URLS[workflowType as keyof typeof N8N_URLS];
+    if (!url) {
+        return {
+            success: false,
+            code: "CONFIG_MISSING",
+            error: `No webhook URL configured for workflow "${workflowType}".`,
+        };
+    }
+
     try {
-        // 1. Config guard
-        const config = workflows[workflowType];
-        if (!config) {
-            return { success: false, error: `Unknown workflow: ${workflowType}`, code: "CONFIG_ERROR" };
-        }
-        if (!config.webhookUrl) {
-            return { success: false, error: `Webhook URL missing for "${config.title}".`, code: "CONFIG_MISSING" };
-        }
-
-        // 2. Obtain a valid session — this call lets Supabase auto-refresh the token
-        let session;
-        try {
-            session = await getValidSession();
-        } catch (e) {
-            if (e instanceof AuthRequiredError) {
-                return { success: false, error: "SESSION_EXPIRED", code: "UNAUTHORIZED" };
-            }
-            throw e;
-        }
-
-        // 3. Make the request
-        let response = await doFetch(config.webhookUrl, message, session.access_token);
-
-        // 4. On 401 — force a token refresh then retry ONCE
-        if (response.status === 401 && !_isRetry) {
-            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-
-            if (refreshError || !refreshData.session?.access_token) {
-                // Refresh failed completely → force sign out
-                await supabase.auth.signOut();
-                return { success: false, error: "SESSION_EXPIRED", code: "UNAUTHORIZED" };
-            }
-
-            // Retry with the new token
-            response = await doFetch(config.webhookUrl, message, refreshData.session.access_token);
-
-            if (response.status === 401) {
-                // Still failing after refresh → sign out and surface the error
-                await supabase.auth.signOut();
-                return { success: false, error: "SESSION_EXPIRED", code: "UNAUTHORIZED" };
-            }
-        }
-
-        // 5. Other status codes
-        if (response.status === 402) {
-            return { success: false, error: "No credits remaining. Please upgrade.", code: "NO_CREDITS" };
-        }
-
-        // 6. Parse JSON
-        let resultData: any;
-        try {
-            resultData = await response.json();
-        } catch {
-            return { success: false, error: "Invalid response from server.", code: "PARSE_ERROR" };
-        }
-
-        if (!response.ok) {
-            return {
-                success: false,
-                error: resultData?.message || resultData?.error || "Request failed.",
-                code: "REQUEST_FAILED",
-            };
-        }
-
-        // 7. Normalise and return
-        const data = resultData.data ?? resultData;
+        const payload: { message: string; conversation_id?: string } = { message };
+        if (conversationId) payload.conversation_id = conversationId;
+        const result = await callN8nWorkflow(payload);
 
         return {
             success: true,
-            ready: data.ready,
-            questions: data.questions,
-            final: data.final,
-            prompt_package: data.prompt_package,
-            remaining_credits: data.remaining_credits,
-            message: data.message,
+            requestId: result.requestId,
+            conversation_id: result.conversation_id,
+            ready: result.ready,
+            questions: result.questions,
+            message: result.message,
+            prompt_package: result.prompt_package,
+            final: result.final,
+            remaining_credits: result.remaining_credits,
+            output: result.output,
         };
-    } catch (err: any) {
-        // Network / unexpected errors — never bubble raw exceptions to the UI
+    } catch (err) {
+        if (err instanceof N8nError) {
+            return {
+                success: false,
+                code: mapN8nCode(err.code),
+                error: err.message,
+                requestId: err.requestId,
+            };
+        }
+
+        // Unexpected JS error — surface as server error
         return {
             success: false,
-            error: "NETWORK_ERROR",
-            message: err?.message ?? "Failed to reach server.",
-            code: "NETWORK_ERROR",
+            code: "SERVER_ERROR",
+            error: "An unexpected error occurred. Please try again.",
         };
     }
 }

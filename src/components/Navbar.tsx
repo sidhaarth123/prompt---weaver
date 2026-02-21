@@ -181,14 +181,20 @@ export default function Navbar() {
             </Link>
           ) : (
             <>
+              <a
+                href="#features"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Features
+              </a>
               <Link
                 to="/about"
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
-                About
+                Templates
               </Link>
               <Link
-                to="/plans"
+                to="/pricing"
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 Pricing
@@ -365,12 +371,12 @@ export default function Navbar() {
           ) : (
             <>
               <Link to="/auth?tab=login">
-                <Button variant="ghost" size="sm">
-                  Sign In
+                <Button variant="ghost" size="sm" className="text-sm font-medium text-white/70 hover:text-white">
+                  Log in
                 </Button>
               </Link>
               <Link to="/auth?tab=signup">
-                <Button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 border-0 text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.02]">
+                <Button className="h-9 px-5 text-sm font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 border-0 text-white shadow-lg shadow-indigo-600/20 transition-all hover:scale-[1.02]">
                   Get Started
                 </Button>
               </Link>
@@ -406,15 +412,22 @@ export default function Navbar() {
               </Link>
             ) : (
               <>
+                <a
+                  href="#features"
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Features
+                </a>
                 <Link
                   to="/about"
                   className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
                   onClick={() => setMobileOpen(false)}
                 >
-                  About
+                  Templates
                 </Link>
                 <Link
-                  to="/plans"
+                  to="/pricing"
                   className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
                   onClick={() => setMobileOpen(false)}
                 >
@@ -538,12 +551,12 @@ export default function Navbar() {
             ) : (
               <>
                 <Link to="/auth?tab=login" onClick={() => setMobileOpen(false)}>
-                  <Button variant="ghost" className="w-full justify-start">
-                    Sign In
+                  <Button variant="ghost" className="w-full justify-start text-white/70">
+                    Log in
                   </Button>
                 </Link>
                 <Link to="/auth?tab=signup" onClick={() => setMobileOpen(false)}>
-                  <Button className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 border-0 text-white shadow-lg shadow-primary/20">
+                  <Button className="w-full rounded-lg bg-indigo-600 hover:bg-indigo-500 border-0 text-white shadow-lg shadow-indigo-600/20">
                     Get Started
                   </Button>
                 </Link>

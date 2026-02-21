@@ -1,11 +1,9 @@
 /**
- * imagePromptWebhook.ts
+ * src/api/imagePromptWebhook.ts
  *
- * @deprecated Use callWorkflowWebhook('image', message) from
- *   @/api/promptWeaverWebhook instead. This file is kept only for
- *   backward-compatibility with any callers that haven't been migrated yet.
- *   It delegates directly to the unified webhook client so there is no
- *   duplicated auth/fetch logic.
+ * Thin backward-compat adapter.
+ * All real logic lives in promptWeaverWebhook.ts.
+ * Any direct callers should migrate to callWorkflowWebhook("image", message).
  */
 
 import { callWorkflowWebhook, WebhookClientResponse } from "@/api/promptWeaverWebhook";
@@ -24,10 +22,6 @@ export interface ImageAssistantData {
 
 export type WebhookResponse = ApiResponse<ImageAssistantData>;
 
-/**
- * Calls the production image-prompt n8n webhook.
- * Auth, 401 retry, and error normalisation are handled in the shared client.
- */
 export async function callImagePromptWebhook(message: string): Promise<WebhookResponse> {
     const result: WebhookClientResponse = await callWorkflowWebhook("image", message);
 
