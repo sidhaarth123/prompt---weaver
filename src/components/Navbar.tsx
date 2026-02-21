@@ -21,7 +21,9 @@ import {
   LogOut,
   User,
   AlertCircle,
-  Megaphone
+  Megaphone,
+  PenLine,
+  Code2
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/theme";
@@ -342,6 +344,20 @@ export default function Navbar() {
               >
                 <Megaphone className="h-4 w-4" />
                 Ad
+              </Link>
+              <Link
+                to="/content-writing-generator"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+              >
+                <PenLine className="h-4 w-4" />
+                Content
+              </Link>
+              <Link
+                to="/coding-assistant"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+              >
+                <Code2 className="h-4 w-4" />
+                Coding
               </Link>
 
               {/* Library/History */}

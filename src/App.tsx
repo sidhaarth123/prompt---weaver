@@ -20,6 +20,10 @@ const ImageGenerator = lazy(() => import("./pages/ImageGenerator"));
 const WebsiteGenerator = lazy(() => import("./pages/WebsiteGenerator"));
 const AdGenerator = lazy(() => import("./pages/AdGenerator"));
 const VideoGenerator = lazy(() => import("./pages/VideoGenerator"));
+const ContentWritingGenerator = lazy(() => import("./pages/ContentWritingGenerator"));
+const CodingAssistantGenerator = lazy(() => import("./pages/CodingAssistantGenerator"));
+const Checkout = lazy(() => import("./pages/Checkout"));
+const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const HistoryPage = lazy(() => import("./pages/History"));
 const Library = lazy(() => import("./pages/Library"));
 const Presets = lazy(() => import("./pages/Presets"));
@@ -91,6 +95,24 @@ const App = () => (
               />
 
               <Route
+                path="/checkout"
+                element={
+                  <ProtectedRoute>
+                    <Checkout />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/payment-success"
+                element={
+                  <ProtectedRoute>
+                    <PaymentSuccess />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
                 path="/banner-generator"
                 element={
                   <ProtectedRoute>
@@ -120,6 +142,22 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <VideoGenerator />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/content-writing-generator"
+                element={
+                  <ProtectedRoute>
+                    <ContentWritingGenerator />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/coding-assistant"
+                element={
+                  <ProtectedRoute>
+                    <CodingAssistantGenerator />
                   </ProtectedRoute>
                 }
               />

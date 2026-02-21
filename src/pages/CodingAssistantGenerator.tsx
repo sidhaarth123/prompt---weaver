@@ -3,27 +3,26 @@ import Navbar from "@/components/Navbar";
 import { usePromptWeaverChat } from "@/hooks/usePromptWeaverChat";
 import { toast } from "@/hooks/use-toast";
 import {
-    Megaphone, History, Layout, Copy, Download,
-    Share2, Plus, Target, RefreshCw
+    Code2, History, Terminal, Copy, Download,
+    Share2, Plus, Zap, Cpu, RefreshCw
 } from "lucide-react";
 
 /* ─── Suggestion chips ───────────────────────────────── */
-const CHIPS = ["High-Converting UGC Script", "Luxury Product Showcase", "Limited Flash Sale Hook", "Problem-Solution Reel"];
+const CHIPS = ["React Authentication Logic", "Python Data Aggregator", "Node.js Microservice", "Rust Performance Hook"];
 
 /* ─── Default output data ────────────────────────────── */
-const DEFAULT_PROMPT = `"Architect a high-impact Meta Ad for a premium vertical skincare brand. Visual: Cinematic macro of bottle texture vs. skin application. Hook: 'Your skin is 60% water, but it's thirstier than you think.' Body: Focus on the 72-hour hydration claim and clean ingredients. CTA: Shop 'The Hydration Drop' with 15% first-order discount. Tone: Authoritative, Minimalist, Luxury."`;
+const DEFAULT_PROMPT = `"Architect a robust React component for an enterprise-level data dashboard. Features: Real-time WebSocket integration, memoized state management using signals or Context API, and Virtualized List rendering for 10k+ rows. Styling: Tailwind CSS with a focus on accessibility (ARIA-compliant). Error handling: Robust boundary isolation and fallback UI."`;
 
 const DEFAULT_JSON = `{
-  "id": "ad-7702-opt",
-  "platform": "Meta / Instagram",
-  "objective": "Conversion",
-  "format": "9:16 Vertical",
-  "hook_angle": "Educational / Thirst",
-  "segments": [
-    { "time": "0-3s", "content": "Visual hook: Deep ocean zoom to bottle" },
-    { "time": "4-10s", "content": "Value prop: Molecular weight hydration" },
-    { "time": "11-15s", "content": "Offer: First Order SAVE15" }
-  ]
+  "id": "cod-9904-opt",
+  "language": "TypeScript / React",
+  "complexity": "Enterprise",
+  "patterns": ["Observer", "Strategy", "Factory"],
+  "optimizations": [
+    { "target": "Render Cycle", "method": "React.memo" },
+    { "target": "Data Fetch", "method": "SWR / TanStack Query" }
+  ],
+  "dependencies": ["lucide-react", "framer-motion", "zod"]
 }`;
 
 /* ─── JSON syntax highlighter ────────────────────────── */
@@ -36,7 +35,7 @@ function JsonHighlight({ code }: { code: string }) {
                     const [, indent, key, colon, val] = km;
                     const isStr = val.startsWith('"');
                     const isNum = /^[\d.[\]{}:,]+/.test(val.trim());
-                    const valCol = isStr ? "#a78bfa" : (val.trim().startsWith("[") || val.trim().startsWith("{")) ? "rgba(255,255,255,0.3)" : "#f59e0b";
+                    const valCol = isStr ? "#a78bfa" : (val.trim().startsWith("[") || val.trim().startsWith("{")) ? "rgba(255,255,255,0.3)" : "#a855f7";
                     return (
                         <span key={i}>
                             {indent}
@@ -52,38 +51,38 @@ function JsonHighlight({ code }: { code: string }) {
     );
 }
 
-/* ─── Ad Agent Avatar ────────────────────────────────── */
-function AdAgentAvatar({ size = 44 }: { size?: number }) {
+/* ─── Coding Agent Avatar ────────────────────────────── */
+function CodingAgentAvatar({ size = 44 }: { size?: number }) {
     return (
         <div style={{
             width: size, height: size, borderRadius: size * 0.3, flexShrink: 0,
-            background: "linear-gradient(135deg,#f43f5e,#e11d48)",
+            background: "linear-gradient(135deg,#7c3aed,#9333ea)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 0 20px rgba(225,29,72,0.4)",
+            boxShadow: "0 0 20px rgba(124,58,237,0.35)",
         }}>
-            <Megaphone style={{ width: size * 0.45, height: size * 0.45, color: "#fff", fill: "#fff" }} />
+            <Code2 style={{ width: size * 0.45, height: size * 0.45, color: "#fff" }} />
         </div>
     );
 }
 
-/* ─── Animated pulse loader ──────────────────────────── */
-function PulseLoader() {
+/* ─── Animated matrix loader ─────────────────────────── */
+function MatrixLoader() {
     return (
-        <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-            {[0, 1, 2].map(i => (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 4px)", gap: 3 }}>
+            {[...Array(9)].map((_, i) => (
                 <div key={i} style={{
-                    width: 6, height: 6, borderRadius: "50%",
-                    background: "#f43f5e",
-                    animation: `pulse-ad 1s ease-in-out ${i * 0.2}s infinite`,
+                    width: 4, height: 4, borderRadius: 1,
+                    background: "#a855f7",
+                    animation: `matrix-drop 1.4s infinite ease-in-out ${i * 0.15}s`,
                 }} />
             ))}
-            <style>{`@keyframes pulse-ad{0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}`}</style>
+            <style>{`@keyframes matrix-drop{0%,100%{opacity:0;transform:translateY(-2px)}50%{opacity:1;transform:translateY(2px)}}`}</style>
         </div>
     );
 }
 
 /* ─── Main component ─────────────────────────────────── */
-export default function AdGenerator() {
+export default function CodingAssistantGenerator() {
     const [input, setInput] = useState("");
     const [copied, setCopied] = useState(false);
     const [result, setResult] = useState<{ text: string; json: string } | null>(null);
@@ -91,21 +90,19 @@ export default function AdGenerator() {
 
     const { chatHistory, isLoading, sendMessage } =
         usePromptWeaverChat({
-            workflowType: "ad",
+            workflowType: "coding",
             onDataReceived: (res) => {
                 if (res.prompt_package) {
                     setResult({
                         text: res.prompt_package.prompt,
                         json: JSON.stringify({
-                            id: `ad-${Math.floor(1000 + Math.random() * 8999)}-opt`,
-                            platform: res.final?.platform ?? "Meta / Instagram",
-                            objective: res.final?.objective ?? "Conversion",
-                            format: res.final?.aspect_ratio ?? "9:16 Vertical",
-                            hook_angle: res.final?.hook_style ?? "Direct / Problem-Solution",
-                            segments: [
-                                { time: "0-3s", content: res.final?.hook_copy ?? "Hook visual sequence" },
-                                { time: "4-12s", content: "Main body value proposition" },
-                                { time: "13-15s", content: `CTA: ${res.final?.cta ?? "Shop Now"}` }
+                            id: `cod-${Math.floor(1000 + Math.random() * 8999)}-opt`,
+                            language: res.final?.language ?? "TypeScript",
+                            framework: res.final?.framework ?? "Next.js",
+                            complexity: "Advanced",
+                            patterns: ["Factory", "Dependency Injection"],
+                            optimizations: [
+                                { target: "State", method: "Redux / Zustand" }
                             ]
                         }, null, 2),
                     });
@@ -126,7 +123,7 @@ export default function AdGenerator() {
         await navigator.clipboard.writeText(result?.text ?? DEFAULT_PROMPT);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-        toast({ title: "Ad script copied!" });
+        toast({ title: "Coding prompt copied!" });
     };
 
     const promptText = result?.text ?? DEFAULT_PROMPT;
@@ -134,7 +131,7 @@ export default function AdGenerator() {
 
     return (
         <div style={{
-            height: "100vh", background: "#05060b",
+            height: "100vh", background: "#06070a",
             display: "flex", flexDirection: "column",
             overflow: "hidden",
             fontFamily: "'Inter','SF Pro',system-ui,sans-serif",
@@ -144,34 +141,34 @@ export default function AdGenerator() {
             {/* ── Two-column body ── */}
             <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 420px", overflow: "hidden" }}>
 
-                {/* ════ LEFT PANEL — AD ARCHITECT ════ */}
+                {/* ════ LEFT PANEL — CODING ARCHITECT ════ */}
                 <div style={{
                     display: "flex", flexDirection: "column",
-                    background: "#05060b",
+                    background: "#06070a",
                     borderRight: "1px solid rgba(255,255,255,0.05)",
                     overflow: "hidden",
                 }}>
-                    {/* Header section */}
+                    {/* Header */}
                     <div style={{ padding: "34px 48px 0", flexShrink: 0 }}>
-                        {/* PERFORMANCE V5.1 • CONVERSION */}
-                        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "4px 14px", borderRadius: 999, background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.22)", marginBottom: 18 }}>
-                            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.16em", color: "#fb7185", textTransform: "uppercase" }}>Performance V5.1</span>
-                            <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#f43f5e" }} />
-                            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.16em", color: "rgba(255,255,255,0.45)", textTransform: "uppercase" }}>Conversion</span>
+                        {/* KERNEL V2.5 • LOW LATENCY */}
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "4px 14px", borderRadius: 999, background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.22)", marginBottom: 18 }}>
+                            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.16em", color: "#a855f7", textTransform: "uppercase" }}>Kernel V2.5</span>
+                            <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#7c3aed" }} />
+                            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.16em", color: "rgba(255,255,255,0.45)", textTransform: "uppercase" }}>Low Latency</span>
                         </div>
 
                         <h1 style={{ fontSize: 48, fontWeight: 900, color: "#fff", margin: "0 0 14px", letterSpacing: "-1.5px", lineHeight: 1.05 }}>
-                            Ad Architect
+                            Coding Architect
                         </h1>
-                        <p style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", margin: "0 0 28px", maxWidth: 460, lineHeight: 1.65 }}>
-                            Synthesizing high-converting ad concepts and prompt formulas for Meta, TikTok, and YouTube.
+                        <p style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", margin: "0 0 28px", maxWidth: 440, lineHeight: 1.65 }}>
+                            Precision-synthesizing architectural prompts, microservices, and logic patterns with enterprise neural optimization.
                         </p>
 
-                        {/* History + Strategy buttons */}
+                        {/* History + Terminal buttons */}
                         <div style={{ display: "flex", gap: 12, marginBottom: 34 }}>
                             {[
-                                { icon: <History style={{ width: 14, height: 14 }} />, label: "Creative History" },
-                                { icon: <Target style={{ width: 14, height: 14 }} />, label: "Strategy Matrix" },
+                                { icon: <History style={{ width: 14, height: 14 }} />, label: "Commit History" },
+                                { icon: <Terminal style={{ width: 14, height: 14 }} />, label: "Logic Matrix" },
                             ].map(btn => (
                                 <button key={btn.label} style={{
                                     display: "flex", alignItems: "center", gap: 8,
@@ -189,21 +186,21 @@ export default function AdGenerator() {
                     {/* ── Chat Messages ── */}
                     <div style={{ flex: 1, overflowY: "auto", padding: "0 48px" }}>
 
-                        {/* Welcome message */}
+                        {/* Welcome Agent */}
                         <div style={{ display: "flex", gap: 16, alignItems: "flex-start", marginBottom: 24 }}>
-                            <AdAgentAvatar size={44} />
+                            <CodingAgentAvatar size={44} />
                             <div style={{
                                 flex: 1, borderRadius: "2px 16px 16px 16px",
-                                background: "rgba(244,63,94,0.06)",
-                                border: "1px solid rgba(244,63,94,0.18)",
+                                background: "rgba(124,58,237,0.06)",
+                                border: "1px solid rgba(124,58,237,0.18)",
                                 padding: "18px 22px",
                             }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#f43f5e" }} />
-                                    <span style={{ fontSize: 13, fontWeight: 800, color: "#fff", letterSpacing: "0.02em" }}>Director Agent Online</span>
+                                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#7c3aed" }} />
+                                    <span style={{ fontSize: 13, fontWeight: 800, color: "#fff", letterSpacing: "0.02em" }}>Compiler Agent Initialized</span>
                                 </div>
                                 <p style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", margin: 0, lineHeight: 1.7 }}>
-                                    I'm ready to architect your next high-performance campaign. Describe your product, target audience, and current objective. I'll engineer a response-optimized script and technical spec.
+                                    I'm ready to architect your next software component. Describe the stack, the bottleneck, or the feature requirements. I'll provide a composited prompt and a technical schema.
                                 </p>
                             </div>
                         </div>
@@ -226,7 +223,7 @@ export default function AdGenerator() {
                             </div>
                         )}
 
-                        {/* History loop */}
+                        {/* Chat History */}
                         {chatHistory.map((msg, i) => (
                             <div key={i} style={{ marginBottom: 22 }}>
                                 {msg.role === "user" ? (
@@ -241,8 +238,8 @@ export default function AdGenerator() {
                                     </div>
                                 ) : (
                                     <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-                                        <AdAgentAvatar size={36} />
-                                        <div style={{ flex: 1, borderRadius: "2px 16px 16px 16px", background: "rgba(244,63,94,0.06)", border: "1px solid rgba(244,63,94,0.14)", padding: "16px 20px" }}>
+                                        <CodingAgentAvatar size={36} />
+                                        <div style={{ flex: 1, borderRadius: "2px 16px 16px 16px", background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.14)", padding: "16px 20px" }}>
                                             <p style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", margin: 0, lineHeight: 1.7 }}>{msg.content}</p>
                                         </div>
                                     </div>
@@ -253,23 +250,23 @@ export default function AdGenerator() {
                         {/* Loader */}
                         {isLoading && (
                             <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-                                <AdAgentAvatar size={36} />
+                                <CodingAgentAvatar size={36} />
                                 <div style={{
                                     borderRadius: "4px 16px 16px 16px",
                                     background: "#0d0f17", border: "1px solid rgba(255,255,255,0.06)",
                                     padding: "14px 20px", display: "flex", alignItems: "center", gap: 14,
                                 }}>
                                     <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", margin: 0, fontStyle: "italic" }}>
-                                        Architect is computing conversion anchors...
+                                        Architect is debugging logic trees...
                                     </p>
-                                    <PulseLoader />
+                                    <MatrixLoader />
                                 </div>
                             </div>
                         )}
                         <div ref={chatEndRef} />
                     </div>
 
-                    {/* ── Input bar ── */}
+                    {/* Input */}
                     <div style={{ padding: "16px 48px 24px", flexShrink: 0 }}>
                         <div style={{
                             display: "flex", alignItems: "center", gap: 12,
@@ -280,10 +277,10 @@ export default function AdGenerator() {
                                 value={input}
                                 onChange={e => setInput(e.target.value)}
                                 onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
-                                placeholder="Evolve your ad's creative strategy..."
+                                placeholder="Evolve your software's logic strategy..."
                                 style={{
                                     flex: 1, height: 56, background: "transparent", border: "none", outline: "none",
-                                    fontSize: 14, color: "rgba(255,255,255,0.5)", fontFamily: "inherit",
+                                    fontSize: 14.5, color: "rgba(255,255,255,0.5)", fontFamily: "inherit",
                                 }}
                             />
                             <button
@@ -292,11 +289,11 @@ export default function AdGenerator() {
                                 style={{
                                     display: "flex", alignItems: "center", gap: 8,
                                     padding: "11px 22px", borderRadius: 10, border: "none",
-                                    background: "linear-gradient(135deg,#f43f5e,#e11d48)",
+                                    background: "linear-gradient(135deg,#7c3aed,#9333ea)",
                                     cursor: "pointer", fontSize: 13, fontWeight: 800,
                                     color: "#fff", letterSpacing: "0.14em", textTransform: "uppercase",
                                     opacity: isLoading || !input.trim() ? 0.4 : 1,
-                                    boxShadow: "0 4px 20px rgba(225,29,72,0.3)",
+                                    boxShadow: "0 4px 20px rgba(124,58,237,0.3)",
                                     transition: "opacity .2s",
                                 }}
                             >
@@ -307,8 +304,8 @@ export default function AdGenerator() {
                         {/* Shortcuts */}
                         <div style={{ display: "flex", gap: 20, paddingTop: 12, paddingLeft: 6 }}>
                             <span style={{ fontSize: 10, color: "rgba(255,255,255,0.15)", letterSpacing: "0.1em" }}>⌘ + ENTER TO SEND</span>
-                            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: "#fb7185", letterSpacing: "0.14em", fontWeight: 600 }}>
-                                <RefreshCw style={{ width: 10, height: 10 }} /> MULTI-CHANNEL ADAPTATION ACTIVE
+                            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: "#a855f7", letterSpacing: "0.14em", fontWeight: 600 }}>
+                                <RefreshCw style={{ width: 10, height: 10 }} /> JIT COMPILATION ACTIVE
                             </span>
                         </div>
                     </div>
@@ -317,12 +314,12 @@ export default function AdGenerator() {
                 {/* ════ RIGHT PANEL — OUTPUT ════ */}
                 <div style={{
                     display: "flex", flexDirection: "column",
-                    background: "#05060b", overflow: "hidden",
+                    background: "#06070a", overflow: "hidden",
                 }}>
                     {/* Header */}
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "26px 28px 20px", flexShrink: 0, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 8px rgba(74,222,128,0.8)" }} />
+                            <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#a855f7", boxShadow: "0 0 8px rgba(168,85,247,0.8)" }} />
                             <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", color: "rgba(255,255,255,0.4)", textTransform: "uppercase" }}>Output Synthesis</span>
                         </div>
                         <div style={{ padding: "4px 12px", borderRadius: 999, background: "#0d0f17", border: "1px solid rgba(255,255,255,0.1)", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.4)", textTransform: "uppercase" }}>
@@ -332,11 +329,11 @@ export default function AdGenerator() {
 
                     <div style={{ flex: 1, overflowY: "auto", padding: "24px 28px" }}>
 
-                        {/* AD SCRIPT / PROMPT */}
+                        {/* CODING PROMPT */}
                         <div style={{ marginBottom: 28 }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "rgba(255,255,255,0.3)", textTransform: "uppercase" }}>Refined Ad Script</span>
-                                <button onClick={handleCopy} style={{ display: "flex", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer", fontSize: 10, fontWeight: 700, color: "#fb7185", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "rgba(255,255,255,0.3)", textTransform: "uppercase" }}>Refined Human Prompt</span>
+                                <button onClick={handleCopy} style={{ display: "flex", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer", fontSize: 10, fontWeight: 700, color: "#a855f7", letterSpacing: "0.12em", textTransform: "uppercase" }}>
                                     <Copy style={{ width: 11, height: 11 }} /> {copied ? "Copied!" : "Copy"}
                                 </button>
                             </div>
@@ -353,7 +350,7 @@ export default function AdGenerator() {
                                 <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "rgba(255,255,255,0.3)", textTransform: "uppercase" }}>Technical Schema (JSON)</span>
                                 <button
                                     onClick={() => { navigator.clipboard.writeText(jsonText); toast({ title: "JSON Exported!" }); }}
-                                    style={{ display: "flex", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer", fontSize: 10, fontWeight: 700, color: "#fb7185", letterSpacing: "0.12em", textTransform: "uppercase" }}
+                                    style={{ display: "flex", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer", fontSize: 10, fontWeight: 700, color: "#a855f7", letterSpacing: "0.12em", textTransform: "uppercase" }}
                                 >
                                     <Download style={{ width: 11, height: 11 }} /> Export
                                 </button>
@@ -363,30 +360,30 @@ export default function AdGenerator() {
                             </div>
                         </div>
 
-                        {/* CAMPAIGN READY card */}
+                        {/* LOGIC READY card */}
                         <div style={{
                             borderRadius: 16,
-                            background: "linear-gradient(135deg,#310e16,#42111d,#20090e)",
-                            border: "1px solid rgba(244,63,94,0.22)",
+                            background: "linear-gradient(135deg,#200e3b,#2a1152,#16092e)",
+                            border: "1px solid rgba(124,58,237,0.25)",
                             padding: "24px",
-                            boxShadow: "0 8px 32px rgba(225,29,72,0.15)",
+                            boxShadow: "0 8px 32px rgba(124,58,237,0.15)",
                         }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
                                 <div style={{
                                     width: 50, height: 50, borderRadius: 14,
-                                    background: "linear-gradient(135deg,#f43f5e,#e11d48)",
+                                    background: "linear-gradient(135deg,#7c3aed,#9333ea)",
                                     display: "flex", alignItems: "center", justifyContent: "center",
-                                    boxShadow: "0 0 20px rgba(225,29,72,0.4)",
+                                    boxShadow: "0 0 20px rgba(124,58,237,0.4)",
                                 }}>
-                                    <Megaphone style={{ width: 22, height: 22, color: "#fff", fill: "#fff" }} />
+                                    <Cpu style={{ width: 22, height: 22, color: "#fff" }} />
                                 </div>
                                 <div>
-                                    <p style={{ fontSize: 16, fontWeight: 800, color: "#fff", margin: "0 0 3px", letterSpacing: "0.02em" }}>Campaign Ready</p>
-                                    <p style={{ fontSize: 10, fontWeight: 700, color: "#fb7185", letterSpacing: "0.14em", textTransform: "uppercase", margin: 0 }}>Verified Performance Assets</p>
+                                    <p style={{ fontSize: 16, fontWeight: 800, color: "#fff", margin: "0 0 3px", letterSpacing: "0.02em" }}>Logic Ready</p>
+                                    <p style={{ fontSize: 10, fontWeight: 700, color: "#a855f7", letterSpacing: "0.14em", textTransform: "uppercase", margin: 0 }}>Verified Technical Assets</p>
                                 </div>
                             </div>
 
-                            {/* ACTION: SYNC TO ADS MANAGER */}
+                            {/* ACTION: OPEN IN IDE */}
                             <button style={{
                                 width: "100%", height: 50, borderRadius: 12, border: "none",
                                 background: "#fff", cursor: "pointer",
@@ -395,8 +392,8 @@ export default function AdGenerator() {
                                 display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
                                 marginBottom: 12,
                             }}>
-                                <Layout style={{ width: 15, height: 15 }} />
-                                Sync to Ads Manager
+                                <Zap style={{ width: 15, height: 15, fill: "#000" }} />
+                                Sync to IDE Environment
                             </button>
 
                             {/* ASSETS + SHARE */}

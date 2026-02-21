@@ -2,409 +2,466 @@ import { useState, useRef, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import { usePromptWeaverChat } from "@/hooks/usePromptWeaverChat";
 import { toast } from "@/hooks/use-toast";
-import { Zap, Send, Copy, Check, X } from "lucide-react";
+import {
+    Zap, Send, Copy, History, SlidersHorizontal,
+    Cpu, Paperclip, Play, Download, Share2, Plus
+} from "lucide-react";
 
-/* ─── Video history sidebar items ───────────────────── */
-interface VideoHistoryItem {
-    id: string;
-    title: string;
-    gradient: string;
-    emoji: string;
+/* ─── Suggestion chips ───────────────────────────────── */
+const CHIPS = ["Cyberpunk Night Market", "Slow Motion Liquid Gold", "Aerial Arctic Exploration"];
+
+/* ─── JSON output ────────────────────────────────────── */
+const DEFAULT_JSON = `{
+  "id": "synth-9902-opt",
+  "engine": "sora-v1",
+  "params": {
+    "motion": 0.75,
+    "fluidity": 0.92,
+    "fidelity": 1.0
+  },
+  "composition": "macro-eye",
+  "seed": 88190223
+}`;
+
+const DEFAULT_PROMPT = `"Ultra-detailed cinematic close-up of a cybernetic eye, macro photography. Iris shows intricate shifting mechanical plates in metallic gold and obsidian. Pupil reflects a high-contrast futuristic cityscape with orange neon flares and rainy atmosphere. Volumetric lighting, 24fps, high motion blur, shot on Arri Alexa, masterwork quality."`;
+
+/* ─── JSON syntax highlighter ────────────────────────── */
+function JsonHighlight({ code }: { code: string }) {
+    return (
+        <pre style={{ margin: 0, fontFamily: "'Fira Code','Courier New',monospace", fontSize: 12, lineHeight: 1.9, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+            {code.split("\n").map((line, i) => {
+                const km = line.match(/^(\s*)"([^"]+)"(\s*:\s*)(.*)/);
+                if (km) {
+                    const [, indent, key, colon, val] = km;
+                    const isString = val.startsWith('"');
+                    const isNum = /^[\d.]+/.test(val.trim());
+                    const valCol = isString ? "#c084fc" : isNum ? "#fbbf24" : "rgba(255,255,255,0.35)";
+                    return (
+                        <span key={i}>
+                            {indent}
+                            <span style={{ color: "#22d3ee" }}>"{key}"</span>
+                            <span style={{ color: "rgba(255,255,255,0.3)" }}>{colon}</span>
+                            <span style={{ color: valCol }}>{val}</span>{"\n"}
+                        </span>
+                    );
+                }
+                return <span key={i} style={{ color: "rgba(255,255,255,0.3)" }}>{line}{"\n"}</span>;
+            })}
+        </pre>
+    );
 }
 
-const VIDEO_HISTORY: VideoHistoryItem[] = [
-    { id: "1", title: "Cinematic Drone Over Iceland", gradient: "linear-gradient(135deg,#0f4c75,#1b6ca8,#16a085)", emoji: "🏔" },
-    { id: "2", title: "Cyberpunk Cityscape", gradient: "linear-gradient(135deg,#6a0572,#a855f7,#06b6d4)", emoji: "🌆" },
-    { id: "3", title: "Abstract Particle Flow", gradient: "linear-gradient(135deg,#1a1a2e,#7c3aed,#a855f7)", emoji: "✨" },
-    { id: "4", title: "Underwater Reef Life", gradient: "linear-gradient(135deg,#006994,#0ea5e9,#22d3ee)", emoji: "🐠" },
-];
-
-/* ─── Brand logo (replaces ChatGPT-style icon) ──────── */
-function BrandAvatar() {
+/* ─── Brand avatar (purple) ──────────────────────────── */
+function AgentAvatar({ size = 44 }: { size?: number }) {
     return (
         <div style={{
-            width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-            background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
+            width: size, height: size, borderRadius: 14, flexShrink: 0,
+            background: "linear-gradient(135deg,#4f46e5,#7c3aed)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 0 14px rgba(99,60,220,0.45)",
+            boxShadow: "0 0 20px rgba(109,40,217,0.5)",
         }}>
-            <Zap style={{ width: 17, height: 17, color: "#fff", fill: "#fff" }} />
+            <Zap style={{ width: size * 0.4, height: size * 0.4, color: "#fff", fill: "#fff" }} />
         </div>
     );
 }
 
-/* ─── Component ─────────────────────────────────────── */
+/* ─── Animated dots loader ───────────────────────────── */
+function DotLoader() {
+    return (
+        <span style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
+            {[0, 1, 2].map(i => (
+                <span key={i} style={{
+                    width: 6, height: 6, borderRadius: "50%",
+                    background: "#22d3ee",
+                    animation: `pulse-dot 1.2s ease-in-out ${i * 0.2}s infinite`,
+                    display: "inline-block",
+                }} />
+            ))}
+            <style>{`@keyframes pulse-dot{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}`}</style>
+        </span>
+    );
+}
+
+/* ─── User avatar ────────────────────────────────────── */
+function UserAvatar() {
+    return (
+        <div style={{
+            width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+            background: "#1e2133", border: "1px solid rgba(255,255,255,0.1)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+            <div style={{ width: 18, height: 18, borderRadius: "50%", background: "rgba(255,255,255,0.15)" }} />
+        </div>
+    );
+}
+
+/* ─── Main component ─────────────────────────────────── */
 export default function VideoGenerator() {
-    const [selectedVideo, setSelectedVideo] = useState("1");
     const [input, setInput] = useState("");
-    const [copiedPrompt, setCopiedPrompt] = useState(false);
-    const [copiedJson, setCopiedJson] = useState(false);
+    const [copied, setCopied] = useState(false);
     const [result, setResult] = useState<{ text: string; json: string } | null>(null);
     const chatEndRef = useRef<HTMLDivElement>(null);
 
-    /* Chat hook */
-    const { chatHistory, isLoading, credits, sendMessage, clearChat } =
+    const { chatHistory, isLoading, sendMessage } =
         usePromptWeaverChat({
-            workflowType: "image", // reuse image workflow for now
+            workflowType: "video",
             onDataReceived: (res) => {
                 if (res.prompt_package) {
                     setResult({
-                        text: res.prompt_package.prompt,
+                        text: `"${res.prompt_package.prompt}"`,
                         json: JSON.stringify({
-                            type: "video",
-                            description: res.prompt_package.prompt,
-                            negative_prompt: res.prompt_package.negative_prompt,
-                            ...(res.final ?? {}),
+                            id: `synth-${Math.floor(1000 + Math.random() * 9000)}-opt`,
+                            engine: res.final?.platform === "runway" ? "runway-v3" : "sora-v1",
+                            params: { motion: 0.75, fluidity: 0.92, fidelity: 1.0 },
+                            composition: "cinematic",
+                            seed: Math.floor(10000000 + Math.random() * 89999999),
                         }, null, 2),
                     });
                 }
             },
         });
 
-    useEffect(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [chatHistory, isLoading]);
+    useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory, isLoading]);
 
-    const handleSend = () => {
-        if (!input.trim() || isLoading) return;
-        sendMessage(input.trim());
+    const handleSend = (msg?: string) => {
+        const text = msg ?? input.trim();
+        if (!text || isLoading) return;
+        sendMessage(text);
         setInput("");
     };
 
-    const copyPrompt = async () => {
-        if (!result) return;
-        await navigator.clipboard.writeText(result.text);
-        setCopiedPrompt(true);
-        setTimeout(() => setCopiedPrompt(false), 2000);
+    const handleCopy = async () => {
+        await navigator.clipboard.writeText(result?.text ?? DEFAULT_PROMPT);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
         toast({ title: "Prompt copied!" });
     };
 
-    const copyJson = async () => {
-        if (!result) return;
-        await navigator.clipboard.writeText(result.json);
-        setCopiedJson(true);
-        setTimeout(() => setCopiedJson(false), 2000);
-        toast({ title: "JSON copied!" });
-    };
-
-    /* Shared card style */
-    const cardSt: React.CSSProperties = {
-        borderRadius: 12,
-        border: "1px solid rgba(99,102,241,0.3)",
-        background: "rgba(15,15,35,0.85)",
-        overflow: "hidden",
-        marginBottom: 14,
-    };
-
-    const copyBtnSt: React.CSSProperties = {
-        width: "100%", height: 38, borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)",
-        background: "rgba(255,255,255,0.05)", cursor: "pointer", fontSize: 13,
-        fontWeight: 600, color: "rgba(255,255,255,0.7)",
-        display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
-    };
+    const promptText = result?.text ?? DEFAULT_PROMPT;
+    const jsonText = result?.json ?? DEFAULT_JSON;
 
     return (
         <div style={{
-            minHeight: "100vh",
-            background: "linear-gradient(160deg, #080820 0%, #0d0d2b 40%, #090920 100%)",
+            height: "100vh", background: "#080a10",
             display: "flex", flexDirection: "column",
+            overflow: "hidden",
+            fontFamily: "'Inter','SF Pro',system-ui,sans-serif",
         }}>
             <Navbar />
 
-            {/* Page title */}
-            <div style={{ textAlign: "center", padding: "28px 24px 18px", flexShrink: 0 }}>
-                <h1 style={{ fontSize: 30, fontWeight: 800, color: "#fff", margin: 0, letterSpacing: "-0.5px" }}>
-                    Video Prompt Generator Chat Dashboard
-                </h1>
-            </div>
+            {/* ── Two-column body ── */}
+            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 420px", overflow: "hidden" }}>
 
-            {/* 3-column body */}
-            <div style={{
-                display: "flex", flex: 1,
-                padding: "0 24px 24px",
-                gap: 18,
-                height: "calc(100vh - 160px)",
-                overflow: "hidden",
-            }}>
-
-                {/* ════════════════════════════
-            COL 1 — VIDEO HISTORY
-        ════════════════════════════ */}
-                <aside style={{
-                    width: 180, flexShrink: 0,
-                    borderRadius: 14,
-                    border: "1px solid rgba(99,102,241,0.3)",
-                    background: "rgba(10,10,30,0.8)",
-                    padding: "16px 12px",
-                    display: "flex", flexDirection: "column",
-                    overflowY: "auto",
-                }}>
-                    <p style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: "0 0 14px 2px" }}>Video History</p>
-
-                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                        {VIDEO_HISTORY.map(item => (
-                            <div
-                                key={item.id}
-                                onClick={() => setSelectedVideo(item.id)}
-                                style={{ cursor: "pointer" }}
-                            >
-                                {/* Thumbnail */}
-                                <div style={{
-                                    width: "100%", height: 90, borderRadius: 10,
-                                    background: item.gradient,
-                                    display: "flex", alignItems: "center", justifyContent: "center",
-                                    fontSize: 28, marginBottom: 6,
-                                    border: selectedVideo === item.id
-                                        ? "2px solid rgba(99,102,241,0.8)"
-                                        : "2px solid transparent",
-                                    transition: "border .15s",
-                                }}>
-                                    {item.emoji}
-                                </div>
-                                <p style={{
-                                    fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.8)",
-                                    margin: 0, lineHeight: 1.3,
-                                }}>{item.title}</p>
-                            </div>
-                        ))}
-                    </div>
-                </aside>
-
-                {/* ════════════════════════════
-            COL 2 — CHAT
-        ════════════════════════════ */}
+                {/* ════ LEFT PANEL ════ */}
                 <div style={{
-                    flex: 1,
-                    borderRadius: 14,
-                    border: "1px solid rgba(99,102,241,0.25)",
-                    background: "rgba(10,10,30,0.6)",
                     display: "flex", flexDirection: "column",
+                    background: "#080a10",
+                    borderRight: "1px solid rgba(255,255,255,0.05)",
                     overflow: "hidden",
-                    position: "relative",
                 }}>
-                    {/* Purple blob glow inside chat */}
-                    <div style={{
-                        position: "absolute", top: "30%", left: "30%",
-                        width: 300, height: 300,
-                        background: "radial-gradient(circle, rgba(99,60,220,0.12) 0%, transparent 70%)",
-                        filter: "blur(40px)", pointerEvents: "none",
-                    }} />
+                    {/* ── Hero header ── */}
+                    <div style={{ padding: "36px 48px 0", flexShrink: 0 }}>
+                        {/* Badge */}
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "4px 12px", borderRadius: 999, background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.2)", marginBottom: 20 }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: "#22d3ee", textTransform: "uppercase" }}>Neural Core V4.0</span>
+                            <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#22d3ee", boxShadow: "0 0 6px #22d3ee" }} />
+                        </div>
 
-                    {/* Messages */}
-                    <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 18 }}>
-                        {/* Default welcome message */}
-                        {chatHistory.length === 0 && (
-                            <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                                <BrandAvatar />
-                                <div style={{
-                                    background: "rgba(99,102,241,0.18)",
-                                    border: "1px solid rgba(99,102,241,0.3)",
-                                    borderRadius: "4px 14px 14px 14px",
-                                    padding: "12px 16px", maxWidth: "70%",
+                        <h1 style={{ fontSize: 52, fontWeight: 900, color: "#fff", margin: "0 0 14px", letterSpacing: "-1.5px", lineHeight: 1.05 }}>
+                            Video Architect
+                        </h1>
+                        <p style={{ fontSize: 15, color: "rgba(255,255,255,0.45)", margin: "0 0 28px", maxWidth: 440, lineHeight: 1.6 }}>
+                            Design cinematic sequences with hyper-precise prompt engineering for Sora, Runway, and Pika.
+                        </p>
+
+                        {/* HISTORY + ADVANCED buttons */}
+                        <div style={{ display: "flex", gap: 12, marginBottom: 36 }}>
+                            {[
+                                { icon: <History style={{ width: 15, height: 15 }} />, label: "History" },
+                                { icon: <SlidersHorizontal style={{ width: 15, height: 15 }} />, label: "Advanced" },
+                            ].map(btn => (
+                                <button key={btn.label} style={{
+                                    display: "flex", alignItems: "center", gap: 8,
+                                    padding: "10px 20px", borderRadius: 10,
+                                    background: "#0f1118", border: "1px solid rgba(255,255,255,0.1)",
+                                    cursor: "pointer", fontSize: 13, fontWeight: 600,
+                                    color: "rgba(255,255,255,0.55)", letterSpacing: "0.06em",
                                 }}>
-                                    <p style={{ fontSize: 14, color: "rgba(255,255,255,0.85)", margin: 0, lineHeight: 1.6 }}>
-                                        Hello! I'm your AI Video Prompt Generator. Describe the video you want to create, and I'll craft the perfect prompt for you.
-                                    </p>
-                                </div>
+                                    {btn.icon} {btn.label.toUpperCase()}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* ── Chat messages ── */}
+                    <div style={{ flex: 1, overflowY: "auto", padding: "0 48px" }}>
+
+                        {/* SYNTHESIS AGENT welcome card */}
+                        <div style={{
+                            display: "flex", gap: 16, alignItems: "flex-start", marginBottom: 28,
+                        }}>
+                            <AgentAvatar size={44} />
+                            <div style={{
+                                flex: 1, borderRadius: "2px 16px 16px 16px",
+                                background: "rgba(79,70,229,0.08)",
+                                border: "1px solid rgba(99,102,241,0.2)",
+                                padding: "18px 22px",
+                            }}>
+                                <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.18em", color: "#818cf8", textTransform: "uppercase", margin: "0 0 10px" }}>
+                                    Synthesis Agent
+                                </p>
+                                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.65)", margin: 0, lineHeight: 1.7 }}>
+                                    Welcome, Creator. I'm ready to architect your cinematic vision. Define your shot composition, lighting physics, and atmospheric details. What are we visualizing today?
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Suggestion chips */}
+                        {chatHistory.length === 0 && (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 28 }}>
+                                {CHIPS.map(chip => (
+                                    <button
+                                        key={chip}
+                                        onClick={() => handleSend(chip)}
+                                        style={{
+                                            padding: "9px 18px", borderRadius: 999,
+                                            background: "#0f1118", border: "1px solid rgba(255,255,255,0.1)",
+                                            cursor: "pointer", fontSize: 13, fontWeight: 500,
+                                            color: "rgba(255,255,255,0.55)", transition: "border .15s",
+                                        }}
+                                    >{chip}</button>
+                                ))}
                             </div>
                         )}
 
+                        {/* Dynamic chat */}
                         {chatHistory.map((msg, i) => (
-                            <div
-                                key={i}
-                                style={{
-                                    display: "flex",
-                                    alignItems: "flex-start",
-                                    gap: 12,
-                                    flexDirection: msg.role === "user" ? "row-reverse" : "row",
-                                }}
-                            >
-                                {msg.role === "assistant" ? (
-                                    <BrandAvatar />
+                            <div key={i} style={{ marginBottom: 22 }}>
+                                {msg.role === "user" ? (
+                                    <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                                        <div style={{
+                                            flex: 1, borderRadius: "16px 16px 16px 2px",
+                                            background: "#0f1118", border: "1px solid rgba(255,255,255,0.06)",
+                                            padding: "16px 20px",
+                                        }}>
+                                            <p style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", margin: 0, lineHeight: 1.65 }}>{msg.content}</p>
+                                        </div>
+                                        <UserAvatar />
+                                    </div>
                                 ) : (
-                                    /* User avatar */
-                                    <div style={{
-                                        width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
-                                        background: "linear-gradient(135deg,#374151,#4b5563)",
-                                        display: "flex", alignItems: "center", justifyContent: "center",
-                                        fontSize: 13, fontWeight: 700, color: "#fff",
-                                    }}>U</div>
+                                    <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+                                        <AgentAvatar size={36} />
+                                        <div style={{ flex: 1, borderRadius: "2px 16px 16px 16px", background: "rgba(79,70,229,0.08)", border: "1px solid rgba(99,102,241,0.15)", padding: "16px 20px" }}>
+                                            <p style={{ fontSize: 14, color: "rgba(255,255,255,0.65)", margin: 0, lineHeight: 1.7 }}>{msg.content}</p>
+                                        </div>
+                                    </div>
                                 )}
-
-                                <div style={{
-                                    background: msg.role === "assistant"
-                                        ? "rgba(99,102,241,0.18)"
-                                        : "rgba(55,65,81,0.7)",
-                                    border: msg.role === "assistant"
-                                        ? "1px solid rgba(99,102,241,0.3)"
-                                        : "1px solid rgba(255,255,255,0.08)",
-                                    borderRadius: msg.role === "assistant"
-                                        ? "4px 14px 14px 14px"
-                                        : "14px 4px 14px 14px",
-                                    padding: "12px 16px",
-                                    maxWidth: "68%",
-                                }}>
-                                    <p style={{ fontSize: 14, color: "rgba(255,255,255,0.85)", margin: 0, lineHeight: 1.6 }}>
-                                        {msg.content}
-                                    </p>
-                                </div>
                             </div>
                         ))}
 
-                        {/* Loading indicator */}
+                        {/* Encoding loader */}
                         {isLoading && (
-                            <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                                <BrandAvatar />
+                            <div style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 22 }}>
                                 <div style={{
-                                    background: "rgba(99,102,241,0.18)",
-                                    border: "1px solid rgba(99,102,241,0.3)",
-                                    borderRadius: "4px 14px 14px 14px",
-                                    padding: "16px",
+                                    width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                                    background: "rgba(109,40,217,0.2)", border: "1px solid rgba(139,92,246,0.3)",
+                                    display: "flex", alignItems: "center", justifyContent: "center",
                                 }}>
-                                    <div style={{ display: "flex", gap: 5 }}>
-                                        {[0, 1, 2].map(i => (
-                                            <div key={i} style={{
-                                                width: 7, height: 7, borderRadius: "50%",
-                                                background: "#818cf8",
-                                                animation: `videoBounce 1.2s ease-in-out ${i * 0.2}s infinite`,
-                                            }} />
-                                        ))}
-                                    </div>
+                                    <Cpu style={{ width: 16, height: 16, color: "#a78bfa" }} />
+                                </div>
+                                <div style={{ borderRadius: "4px 16px 16px 16px", background: "#0f1118", border: "1px solid rgba(255,255,255,0.06)", padding: "14px 20px", display: "flex", alignItems: "center", gap: 14 }}>
+                                    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", margin: 0, fontStyle: "italic" }}>
+                                        Encoding cinematic parameters & optical physics...
+                                    </p>
+                                    <DotLoader />
                                 </div>
                             </div>
                         )}
                         <div ref={chatEndRef} />
                     </div>
 
-                    {/* Input bar */}
-                    <div style={{
-                        flexShrink: 0,
-                        padding: "14px 20px",
-                        borderTop: "1px solid rgba(99,102,241,0.2)",
-                        display: "flex", gap: 10, alignItems: "center",
-                        background: "rgba(10,10,30,0.8)",
-                    }}>
-                        <input
-                            value={input}
-                            onChange={e => setInput(e.target.value)}
-                            onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
-                            placeholder="Type your video idea here or ask for suggestions..."
-                            style={{
-                                flex: 1, height: 46, padding: "0 18px", borderRadius: 30,
-                                fontSize: 14, color: "rgba(255,255,255,0.75)",
-                                background: "rgba(255,255,255,0.05)",
-                                border: "1px solid rgba(99,102,241,0.25)", outline: "none",
-                            }}
-                        />
-                        <button
-                            onClick={handleSend}
-                            disabled={isLoading || !input.trim()}
-                            style={{
-                                width: 46, height: 46, borderRadius: "50%", border: "none",
-                                cursor: "pointer", flexShrink: 0,
-                                background: "linear-gradient(135deg, #6366f1, #4f46e5)",
-                                display: "flex", alignItems: "center", justifyContent: "center",
-                                boxShadow: "0 4px 16px rgba(99,102,241,0.5)",
-                                opacity: isLoading || !input.trim() ? 0.5 : 1,
-                            }}
-                        >
-                            <Send style={{ width: 18, height: 18, color: "#fff" }} />
-                        </button>
+                    {/* ── Bottom input ── */}
+                    <div style={{ flexShrink: 0, padding: "16px 48px 10px" }}>
+                        <div style={{
+                            display: "flex", alignItems: "center", gap: 12,
+                            background: "#0d0e18", borderRadius: 14,
+                            border: "1px solid rgba(255,255,255,0.08)", padding: "0 16px",
+                            boxShadow: "0 0 0 0 rgba(109,40,217,0)",
+                        }}>
+                            <input
+                                value={input}
+                                onChange={e => setInput(e.target.value)}
+                                onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
+                                placeholder="Evolve your cinematic vision..."
+                                style={{
+                                    flex: 1, height: 58, background: "transparent", border: "none", outline: "none",
+                                    fontSize: 15, color: "rgba(255,255,255,0.55)", fontFamily: "inherit",
+                                }}
+                            />
+                            <button style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.25)", padding: 0 }}>
+                                <Paperclip style={{ width: 18, height: 18 }} />
+                            </button>
+                            <button
+                                onClick={() => handleSend()}
+                                disabled={isLoading || !input.trim()}
+                                style={{
+                                    display: "flex", alignItems: "center", gap: 8,
+                                    padding: "11px 22px", borderRadius: 10, border: "none",
+                                    background: "linear-gradient(135deg,#4f46e5,#7c3aed)",
+                                    cursor: "pointer", fontSize: 13, fontWeight: 800,
+                                    color: "#fff", letterSpacing: "0.14em", textTransform: "uppercase",
+                                    opacity: isLoading || !input.trim() ? 0.5 : 1,
+                                    boxShadow: "0 4px 20px rgba(99,60,220,0.45)",
+                                    transition: "opacity .2s",
+                                }}
+                            >
+                                Synthesize <Plus style={{ width: 15, height: 15 }} />
+                            </button>
+                        </div>
+
+                        {/* Footer hints */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 20, padding: "10px 4px", marginBottom: 4 }}>
+                            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", letterSpacing: "0.1em" }}>⌘ + ←</span>
+                            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: "#22d3ee", letterSpacing: "0.14em", fontWeight: 600, textTransform: "uppercase" }}>
+                                <div style={{ width: 8, height: 8, borderRadius: 2, background: "#22d3ee" }} />
+                                4K Lossless Generation
+                            </span>
+                        </div>
                     </div>
                 </div>
 
-                {/* ════════════════════════════
-            COL 3 — VIDEO OUTPUT PANEL
-        ════════════════════════════ */}
+                {/* ════ RIGHT PANEL — OUTPUT SYNTHESIS ════ */}
                 <div style={{
-                    width: 310, flexShrink: 0,
-                    borderRadius: 14,
-                    border: "1px solid rgba(99,102,241,0.3)",
-                    background: "rgba(10,10,30,0.8)",
                     display: "flex", flexDirection: "column",
-                    overflow: "hidden",
+                    background: "#070810", overflow: "hidden",
                 }}>
                     {/* Panel header */}
-                    <div style={{
-                        padding: "16px 18px",
-                        borderBottom: "1px solid rgba(99,102,241,0.2)",
-                        flexShrink: 0,
-                    }}>
-                        <p style={{ fontSize: 16, fontWeight: 700, color: "#fff", margin: 0 }}>Video Output Panel</p>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "28px 28px 20px", flexShrink: 0, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 8px rgba(34,197,94,0.8)" }} />
+                            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", color: "rgba(255,255,255,0.45)", textTransform: "uppercase" }}>Output Synthesis</span>
+                        </div>
+                        <div style={{ padding: "5px 12px", borderRadius: 999, background: "#0f1118", border: "1px solid rgba(255,255,255,0.1)", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.4)", textTransform: "uppercase" }}>
+                            Ready For Render
+                        </div>
                     </div>
 
-                    <div style={{ flex: 1, overflowY: "auto", padding: "14px" }}>
+                    <div style={{ flex: 1, overflowY: "auto", padding: "24px 28px" }}>
 
-                        {/* Human Prompt card */}
-                        <div style={cardSt}>
-                            {/* Card header */}
-                            <div style={{
-                                padding: "10px 14px",
-                                background: "linear-gradient(90deg, rgba(99,102,241,0.35), rgba(139,92,246,0.2))",
-                                borderBottom: "1px solid rgba(99,102,241,0.2)",
-                            }}>
-                                <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: 0 }}>
-                                    Human Prompt <span style={{ color: "rgba(255,255,255,0.5)", fontWeight: 400 }}>(Optimized for Sora/Runway)</span>
+                        {/* ── REFINED VIDEO PROMPT ── */}
+                        <div style={{ marginBottom: 28 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase" }}>Refined Video Prompt</span>
+                                <button
+                                    onClick={handleCopy}
+                                    style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", fontSize: 10, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase" }}
+                                >
+                                    <Copy style={{ width: 12, height: 12 }} />
+                                    {copied ? "Copied!" : "Copy"}
+                                </button>
+                            </div>
+
+                            <div style={{ borderRadius: 12, background: "#0c0e1a", border: "1px solid rgba(255,255,255,0.06)", padding: "20px", marginBottom: 14 }}>
+                                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", margin: 0, lineHeight: 1.75, fontStyle: "italic" }}>
+                                    {promptText}
                                 </p>
                             </div>
-                            <div style={{ padding: "12px 14px" }}>
-                                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 1.65, margin: "0 0 14px" }}>
-                                    {result?.text ?? "Your video prompt will appear here after you describe your concept in the chat…"}
-                                </p>
-                                <button
-                                    onClick={copyPrompt}
-                                    disabled={!result}
-                                    style={{ ...copyBtnSt, opacity: result ? 1 : 0.4 }}
-                                >
-                                    {copiedPrompt ? <Check style={{ width: 14, height: 14, color: "#4ade80" }} /> : <Copy style={{ width: 14, height: 14 }} />}
-                                    {copiedPrompt ? "Copied!" : "Copy Prompt"}
-                                </button>
+
+                            {/* S R P platform chips + validated label */}
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                {["S", "R", "P"].map((l, i) => (
+                                    <div key={l} style={{
+                                        width: 26, height: 26, borderRadius: "50%",
+                                        background: ["#1e40af", "#7c3aed", "#0f766e"][i],
+                                        display: "flex", alignItems: "center", justifyContent: "center",
+                                        fontSize: 10, fontWeight: 700, color: "#fff",
+                                    }}>{l}</div>
+                                ))}
+                                <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)", textTransform: "uppercase" }}>
+                                    Validated for Sora, Runway &amp; Pika
+                                </span>
                             </div>
                         </div>
 
-                        {/* JSON Prompt card */}
-                        <div style={cardSt}>
-                            <div style={{
-                                padding: "10px 14px",
-                                background: "linear-gradient(90deg, rgba(99,102,241,0.25), rgba(139,92,246,0.15))",
-                                borderBottom: "1px solid rgba(99,102,241,0.2)",
-                            }}>
-                                <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: 0 }}>JSON Prompt</p>
-                            </div>
-                            <div style={{ padding: "12px 14px" }}>
-                                <div style={{
-                                    background: "#07071a", borderRadius: 8, padding: "12px",
-                                    maxHeight: 240, overflowY: "auto", marginBottom: 14,
-                                }}>
-                                    <pre style={{
-                                        fontSize: 11.5, color: "rgba(255,255,255,0.75)", fontFamily: "'Fira Code', monospace",
-                                        lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap",
-                                    }}>
-                                        {result?.json ?? `{\n  "type": "video",\n  "description": "...",\n  "style": "cinematic, photorealistic, 4K",\n  "elements": ["skyscrapers", "flying vehicles"],\n  "atmosphere": "bustling, vibrant"\n}`}
-                                    </pre>
-                                </div>
+                        {/* ── TECHNICAL SCHEMA (JSON) ── */}
+                        <div style={{ marginBottom: 24 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase" }}>Technical Schema (JSON)</span>
                                 <button
-                                    onClick={copyJson}
-                                    disabled={!result}
-                                    style={{ ...copyBtnSt, opacity: result ? 1 : 0.4 }}
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(jsonText);
+                                        toast({ title: "JSON exported!" });
+                                    }}
+                                    style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", fontSize: 10, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase" }}
                                 >
-                                    {copiedJson ? <Check style={{ width: 14, height: 14, color: "#4ade80" }} /> : <Copy style={{ width: 14, height: 14 }} />}
-                                    {copiedJson ? "Copied!" : "Copy JSON"}
+                                    <Download style={{ width: 12, height: 12 }} /> Export
                                 </button>
+                            </div>
+
+                            <div style={{ position: "relative", borderRadius: 12, background: "#0c0e1a", border: "1px solid rgba(255,255,255,0.06)", padding: "18px 18px 14px" }}>
+                                <div style={{ position: "absolute", top: 12, right: 14, fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.2)", letterSpacing: "0.12em" }}>V4.2-350K</div>
+                                <JsonHighlight code={jsonText} />
+                            </div>
+                        </div>
+
+                        {/* ── PROJECT READY card ── */}
+                        <div style={{
+                            borderRadius: 16,
+                            background: "linear-gradient(135deg,#1e1b4b,#2d1952,#1a1040)",
+                            border: "1px solid rgba(139,92,246,0.25)",
+                            padding: "24px",
+                            boxShadow: "0 8px 32px rgba(79,40,200,0.2)",
+                        }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
+                                <div style={{
+                                    width: 52, height: 52, borderRadius: 14,
+                                    background: "linear-gradient(135deg,#4f46e5,#7c3aed)",
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                    boxShadow: "0 0 24px rgba(109,40,217,0.5)",
+                                }}>
+                                    <Zap style={{ width: 22, height: 22, color: "#fff", fill: "#fff" }} />
+                                </div>
+                                <div>
+                                    <p style={{ fontSize: 16, fontWeight: 800, color: "#fff", margin: "0 0 3px", letterSpacing: "0.02em" }}>Project Ready</p>
+                                    <p style={{ fontSize: 10, fontWeight: 700, color: "#22d3ee", letterSpacing: "0.14em", textTransform: "uppercase", margin: 0 }}>Ready for High-Fidelity Export</p>
+                                </div>
+                            </div>
+
+                            {/* LAUNCH IN VIDEO AI — large */}
+                            <button style={{
+                                width: "100%", height: 50, borderRadius: 12, border: "none",
+                                background: "#fff", cursor: "pointer",
+                                fontSize: 13, fontWeight: 800, color: "#18181b",
+                                letterSpacing: "0.12em", textTransform: "uppercase",
+                                display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                                marginBottom: 12,
+                            }}>
+                                <Play style={{ width: 15, height: 15, fill: "#18181b" }} />
+                                Launch in Video AI
+                            </button>
+
+                            {/* ASSETS + SHARE */}
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                                {[
+                                    { label: "Assets", icon: <Download style={{ width: 13, height: 13 }} /> },
+                                    { label: "Share", icon: <Share2 style={{ width: 13, height: 13 }} /> },
+                                ].map(btn => (
+                                    <button key={btn.label} style={{
+                                        height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.12)",
+                                        background: "rgba(255,255,255,0.05)", cursor: "pointer",
+                                        fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.55)",
+                                        letterSpacing: "0.14em", textTransform: "uppercase",
+                                        display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+                                    }}>
+                                        {btn.icon} {btn.label}
+                                    </button>
+                                ))}
                             </div>
                         </div>
 
                     </div>
                 </div>
-
             </div>
-
-            <style>{`
-        @keyframes videoBounce {
-          0%, 60%, 100% { transform: translateY(0); }
-          30% { transform: translateY(-7px); }
-        }
-      `}</style>
         </div>
     );
 }

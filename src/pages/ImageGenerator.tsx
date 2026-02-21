@@ -2,68 +2,76 @@ import { useState, useRef, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import { usePromptWeaverChat } from "@/hooks/usePromptWeaverChat";
 import { toast } from "@/hooks/use-toast";
-import {
-    Zap, Send, Copy, Check, X, Plus,
-    MessageSquare, Image as ImageIcon
-} from "lucide-react";
+import { Zap, Send, Copy, Check, Save, FlaskConical, Archive, ArrowUpRight } from "lucide-react";
 
-/* ─── Types ─────────────────────────────────────────── */
-interface HistoryItem {
-    id: string;
-    title: string;
-    date: string;
-    icon: "zap" | "image" | "bar" | "layers" | "cpu" | "pen";
-}
-
-/* ─── Mock chat history (sidebar) ──────────────────── */
-const MOCK_HISTORY: HistoryItem[] = [
-    { id: "1", title: "Cyberpunk Cityscape", date: "Oct 26, 2023", icon: "zap" },
-    { id: "2", title: "Vintage Portrait Style", date: "Oct 26, 2023", icon: "image" },
-    { id: "3", title: "Minimalist Logo Prompt", date: "Oct 26, 2023", icon: "bar" },
-    { id: "4", title: "Minimalist Logo Prompt", date: "Oct 26, 2023", icon: "layers" },
-    { id: "5", title: "Minimalist Portrait Style", date: "Oct 25, 2023", icon: "pen" },
-    { id: "6", title: "Minimalist Logo Prompt", date: "Oct 22, 2023", icon: "cpu" },
-    { id: "7", title: "Vintage Portrait Style", date: "Oct 22, 2023", icon: "image" },
-    { id: "8", title: "Minimalist Logo Prompt", date: "Oct 26, 2023", icon: "bar" },
-    { id: "9", title: "Vintage Portrait Style", date: "Oct 26, 2023", icon: "layers" },
-    { id: "10", title: "Cyberpunk Cityscape", date: "Oct 26, 2023", icon: "zap" },
+/* ─── Studio history items ───────────────────────────── */
+const STUDIO_HISTORY = [
+    { id: "1", title: "Cyberpunk Metropolis", ago: "2M AGO", gradient: "linear-gradient(135deg,#0a1628,#1a2a4a)" },
+    { id: "2", title: "Ethereal Portrait", ago: "1H AGO", gradient: "linear-gradient(135deg,#0d1a2e,#0f2342)" },
+    { id: "3", title: "Neon Dreamscape", ago: "3H AGO", gradient: "linear-gradient(135deg,#0a1020,#12213a)" },
 ];
 
-/* ─── Small icon component for history items ────────── */
-function HistoryIcon({ icon }: { icon: HistoryItem["icon"] }) {
-    const gradients: Record<string, string> = {
-        zap: "linear-gradient(135deg,#4f46e5,#7c3aed)",
-        image: "linear-gradient(135deg,#b45309,#d97706)",
-        bar: "linear-gradient(135deg,#0369a1,#0ea5e9)",
-        layers: "linear-gradient(135deg,#1d4ed8,#3b82f6)",
-        cpu: "linear-gradient(135deg,#0f766e,#14b8a6)",
-        pen: "linear-gradient(135deg,#9333ea,#c026d3)",
-    };
-    const emojis: Record<string, string> = {
-        zap: "⚡", image: "🖼", bar: "📊", layers: "◻", cpu: "🔵", pen: "✏"
-    };
+/* ─── Brand avatar (cyan version) ───────────────────── */
+function AvatarIcon() {
     return (
         <div style={{
-            width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-            background: gradients[icon], display: "flex", alignItems: "center",
-            justifyContent: "center", fontSize: 14,
+            width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
+            background: "rgba(6,182,212,0.15)",
+            border: "1.5px solid rgba(6,182,212,0.5)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 0 12px rgba(6,182,212,0.3)",
         }}>
-            {emojis[icon]}
+            <Zap style={{ width: 14, height: 14, color: "#22d3ee", fill: "#22d3ee" }} />
         </div>
+    );
+}
+
+/* ─── JSON syntax highlighting ───────────────────────── */
+function JsonHighlight({ json }: { json: string }) {
+    const lines = json.split("\n");
+    return (
+        <pre style={{ margin: 0, fontFamily: "'Fira Code','Courier New',monospace", fontSize: 12, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>
+            {lines.map((line, i) => {
+                const keyMatch = line.match(/^(\s*)"([^"]+)"(\s*:\s*)(.*)/);
+                const braceLine = line.trim() === "{" || line.trim() === "}" || line.trim() === "}," || line.trim() === "[" || line.trim() === "],";
+                if (braceLine) return <span key={i} style={{ color: "rgba(255,255,255,0.3)" }}>{line}{"\n"}</span>;
+                if (keyMatch) {
+                    const [, indent, key, colon, value] = keyMatch;
+                    const valColor = value.startsWith('"') ? "#a78bfa" : value.startsWith("[") || value.startsWith("{") ? "rgba(255,255,255,0.3)" : "#34d399";
+                    return (
+                        <span key={i}>
+                            {indent}<span style={{ color: "#22d3ee" }}>"{key}"</span>
+                            <span style={{ color: "rgba(255,255,255,0.4)" }}>{colon}</span>
+                            <span style={{ color: valColor }}>{value}</span>{"\n"}
+                        </span>
+                    );
+                }
+                return <span key={i} style={{ color: "rgba(255,255,255,0.5)" }}>{line}{"\n"}</span>;
+            })}
+        </pre>
     );
 }
 
 /* ─── Main component ─────────────────────────────────── */
 export default function ImageGenerator() {
-    const [selectedChat, setSelectedChat] = useState("1");
+    const [selectedItem, setSelectedItem] = useState("1");
+    const [activeTab, setActiveTab] = useState<"human" | "json">("human");
     const [input, setInput] = useState("");
-    const [copiedHuman, setCopiedHuman] = useState(false);
-    const [copiedJson, setCopiedJson] = useState(false);
+    const [copied, setCopied] = useState(false);
     const [result, setResult] = useState<{ text: string; json: string } | null>(null);
     const chatEndRef = useRef<HTMLDivElement>(null);
 
-    /* Prompt Weaver chat hook */
-    const { chatHistory, isLoading, credits, sendMessage, clearChat } =
+    const defaultJson = `{
+  "subject": "cyberpunk_alley",
+  "environment": "rainy_tokyo",
+  "lighting": ["cyan_neon", "magenta"],
+  "resolution": "8k",
+  "aspect_ratio": 1.77
+}`;
+
+    const defaultText = `"Cinematic high-angle shot of a Tokyo-inspired cyberpunk alleyway during a torrential downpour. Intricate neon signage in electric cyan and magenta reflecting off wet obsidian asphalt. Volumetric fog, anamorphic lens flares, Hyper-realistic, 8k, Unreal Engine 5 render style --ar 16:9 --v 6.0"`;
+
+    const { chatHistory, isLoading, credits, sendMessage } =
         usePromptWeaverChat({
             workflowType: "image",
             onDataReceived: (res) => {
@@ -71,224 +79,134 @@ export default function ImageGenerator() {
                     setResult({
                         text: res.prompt_package.prompt,
                         json: JSON.stringify({
-                            prompt: res.prompt_package.prompt,
+                            subject: res.final?.subject ?? "generated",
+                            environment: res.final?.environment ?? "dynamic",
+                            lighting: res.final?.lighting ?? ["ambient"],
+                            resolution: res.final?.resolution ?? "4k",
+                            aspect_ratio: res.final?.aspect_ratio ?? 1.77,
                             negative_prompt: res.prompt_package.negative_prompt,
-                            ...(res.final ?? {}),
                         }, null, 2),
                     });
                 }
             },
         });
 
-    useEffect(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [chatHistory, isLoading]);
+    useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory, isLoading]);
 
-    const handleSend = () => {
-        if (!input.trim() || isLoading) return;
-        sendMessage(input.trim());
-        setInput("");
+    const handleSend = () => { if (!input.trim() || isLoading) return; sendMessage(input.trim()); setInput(""); };
+
+    const handleCopy = async () => {
+        const text = result?.text ?? defaultText;
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        toast({ title: "Prompt copied!" });
     };
 
-    const handleNewChat = () => {
-        clearChat();
-        setResult(null);
-        setInput("");
-    };
-
-    const copyHuman = async () => {
-        if (!result) return;
-        await navigator.clipboard.writeText(result.text);
-        setCopiedHuman(true);
-        setTimeout(() => setCopiedHuman(false), 2000);
-        toast({ title: "Human prompt copied!" });
-    };
-
-    const copyJson = async () => {
-        if (!result) return;
-        await navigator.clipboard.writeText(result.json);
-        setCopiedJson(true);
-        setTimeout(() => setCopiedJson(false), 2000);
-        toast({ title: "JSON prompt copied!" });
-    };
-
-    /* ── shared inline styles ── */
-    const col: React.CSSProperties = {
-        display: "flex", flexDirection: "column", overflowY: "auto",
-    };
+    /* Dimensions */
+    const SIDEBAR_W = 200;
+    const OUTPUT_W = 300;
 
     return (
-        <div style={{ minHeight: "100vh", background: "#0b0b14", display: "flex", flexDirection: "column" }}>
+        <div style={{ height: "100vh", background: "#07080d", display: "flex", flexDirection: "column", overflow: "hidden", fontFamily: "'Inter','SF Pro',system-ui,sans-serif" }}>
             <Navbar />
 
             {/* 3-column body */}
-            <div style={{ display: "flex", flex: 1, paddingTop: 64, height: "calc(100vh - 64px)", overflow: "hidden" }}>
+            <div style={{ display: "flex", flex: 1, overflow: "hidden", marginTop: 0 }}>
 
-                {/* ════════════════════════════════════
-            COL 1 — CHAT HISTORY SIDEBAR
-        ════════════════════════════════════ */}
+                {/* ════ COL 1 — STUDIO HISTORY ════ */}
                 <aside style={{
-                    ...col,
-                    width: 248,
-                    flexShrink: 0,
-                    background: "#0f0f1a",
-                    borderRight: "1px solid rgba(255,255,255,0.07)",
-                    padding: "20px 12px",
-                    gap: 0,
+                    width: SIDEBAR_W, flexShrink: 0,
+                    background: "#05060a",
+                    borderRight: "1px solid rgba(255,255,255,0.04)",
+                    display: "flex", flexDirection: "column",
+                    padding: "20px 14px 14px",
+                    overflow: "hidden",
                 }}>
-                    {/* Header */}
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, padding: "0 4px" }}>
-                        <span style={{ fontSize: 17, fontWeight: 700, color: "#fff" }}>Chat History</span>
-                        <button style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
-                            <X style={{ width: 16, height: 16, color: "rgba(255,255,255,0.4)" }} />
-                        </button>
-                    </div>
+                    <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "rgba(255,255,255,0.3)", textTransform: "uppercase", margin: "0 0 16px 2px" }}>
+                        Studio History
+                    </p>
 
-                    {/* New Chat button */}
-                    <button
-                        onClick={handleNewChat}
-                        style={{
-                            width: "100%", height: 42, borderRadius: 12, border: "none", cursor: "pointer",
-                            fontWeight: 700, fontSize: 14, color: "#fff", marginBottom: 16,
-                            background: "linear-gradient(90deg, #06b6d4 0%, #6366f1 100%)",
-                            boxShadow: "0 4px 16px rgba(99,102,241,0.35)",
-                            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                        }}
-                    >
-                        <Plus style={{ width: 16, height: 16 }} /> New Chat
-                    </button>
-
-                    {/* History items */}
-                    <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 2 }}>
-                        {MOCK_HISTORY.map(item => (
-                            <button
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, overflowY: "auto" }}>
+                        {STUDIO_HISTORY.map(item => (
+                            <div
                                 key={item.id}
-                                onClick={() => setSelectedChat(item.id)}
+                                onClick={() => setSelectedItem(item.id)}
                                 style={{
-                                    display: "flex", alignItems: "center", gap: 10,
-                                    padding: "10px 10px", borderRadius: 10, border: "none", cursor: "pointer",
-                                    background: selectedChat === item.id ? "rgba(255,255,255,0.08)" : "transparent",
-                                    textAlign: "left", width: "100%",
-                                    transition: "background .15s",
-                                }}
-                                onMouseEnter={e => {
-                                    if (selectedChat !== item.id)
-                                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)";
-                                }}
-                                onMouseLeave={e => {
-                                    if (selectedChat !== item.id)
-                                        (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                                    borderRadius: 8, cursor: "pointer",
+                                    border: selectedItem === item.id ? "1px solid rgba(6,182,212,0.3)" : "1px solid rgba(255,255,255,0.05)",
+                                    overflow: "hidden",
+                                    outline: selectedItem === item.id ? "0px solid rgba(6,182,212,0.1)" : "none",
+                                    boxShadow: selectedItem === item.id ? "0 0 12px rgba(6,182,212,0.1)" : "none",
+                                    transition: "all .15s",
                                 }}
                             >
-                                <HistoryIcon icon={item.icon} />
-                                <div style={{ overflow: "hidden" }}>
-                                    <p style={{ fontSize: 13, fontWeight: 600, color: "#fff", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                        {item.title}
-                                    </p>
-                                    <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: 0 }}>{item.date}</p>
+                                {/* Thumbnail */}
+                                <div style={{ height: 96, background: item.gradient, width: "100%" }} />
+                                {/* Label */}
+                                <div style={{ padding: "8px 10px", background: "#0b0c12" }}>
+                                    <p style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.75)", margin: "0 0 2px", lineHeight: 1.3 }}>{item.title}</p>
+                                    <p style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", margin: 0, letterSpacing: "0.06em" }}>{item.ago}</p>
                                 </div>
-                            </button>
+                            </div>
                         ))}
                     </div>
+
+                    {/* View Archive */}
+                    <button style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 14, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.14em", color: "rgba(255,255,255,0.28)", textTransform: "uppercase" }}>View Archive</span>
+                        <ArrowUpRight style={{ width: 11, height: 11, color: "rgba(255,255,255,0.28)" }} />
+                    </button>
                 </aside>
 
-                {/* ════════════════════════════════════
-            COL 2 — CHAT PANEL
-        ════════════════════════════════════ */}
-                <div style={{
-                    ...col,
-                    flex: 1,
-                    borderRight: "1px solid rgba(255,255,255,0.07)",
-                    background: "#0d0d18",
-                    position: "relative",
-                }}>
-                    {/* Chat header */}
-                    <div style={{
-                        padding: "18px 24px", borderBottom: "1px solid rgba(255,255,255,0.07)",
-                        flexShrink: 0,
-                    }}>
-                        <span style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>Chat</span>
-                    </div>
+                {/* ════ COL 2 — CHAT WORKSPACE ════ */}
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "#07080d", borderRight: "1px solid rgba(255,255,255,0.04)", overflow: "hidden" }}>
 
                     {/* Messages */}
-                    <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "flex", flexDirection: "column", gap: 20 }}>
+                    <div style={{ flex: 1, overflowY: "auto", padding: "28px 32px 16px", display: "flex", flexDirection: "column", gap: 20 }}>
+
+                        {/* Default welcome */}
                         {chatHistory.length === 0 && (
-                            <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                                {/* AI avatar */}
+                            <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                                <AvatarIcon />
                                 <div style={{
-                                    width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-                                    background: "linear-gradient(135deg,#4f46e5,#7c3aed)",
-                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                    background: "#0d0f18", border: "1px solid rgba(255,255,255,0.06)",
+                                    borderRadius: "2px 12px 12px 12px",
+                                    padding: "14px 18px", maxWidth: "68%",
                                 }}>
-                                    <Zap style={{ width: 17, height: 17, color: "#fff", fill: "#fff" }} />
-                                </div>
-                                <div>
-                                    <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: "0 0 4px" }}>Prompt Engineer (AI)</p>
-                                    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", margin: 0, lineHeight: 1.55 }}>
-                                        Welcome back, Alex! What kind of image prompt would you like to create today?
+                                    <p style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", margin: 0, lineHeight: 1.6 }}>
+                                        Welcome to the Architect Studio. Describe the vision you'd like to materialize into a prompt.
                                     </p>
                                 </div>
                             </div>
                         )}
 
                         {chatHistory.map((msg, i) => (
-                            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 14, flexDirection: msg.role === "user" ? "row-reverse" : "row" }}>
                                 {msg.role === "assistant" ? (
-                                    /* AI bubble */
-                                    <div style={{
-                                        width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-                                        background: "linear-gradient(135deg,#4f46e5,#7c3aed)",
-                                        display: "flex", alignItems: "center", justifyContent: "center",
-                                    }}>
-                                        <Zap style={{ width: 17, height: 17, color: "#fff", fill: "#fff" }} />
-                                    </div>
+                                    <AvatarIcon />
                                 ) : (
-                                    /* User bubble */
-                                    <div style={{ position: "relative", flexShrink: 0 }}>
-                                        <div style={{
-                                            width: 38, height: 38, borderRadius: "50%",
-                                            background: "linear-gradient(135deg,#d97706,#f59e0b)",
-                                            display: "flex", alignItems: "center", justifyContent: "center",
-                                            fontSize: 14, fontWeight: 700, color: "#fff",
-                                        }}>U</div>
-                                        <div style={{
-                                            position: "absolute", bottom: 1, right: 0,
-                                            width: 10, height: 10, borderRadius: "50%",
-                                            background: "#22c55e", border: "2px solid #0d0d18",
-                                        }} />
-                                    </div>
+                                    <div style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)" }}>U</div>
                                 )}
-                                <div>
-                                    <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: "0 0 4px" }}>
-                                        {msg.role === "assistant" ? "Prompt Engineer (AI)" : "User"}
-                                    </p>
-                                    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", margin: 0, lineHeight: 1.55 }}>
-                                        {msg.content}
-                                    </p>
+                                <div style={{
+                                    background: msg.role === "assistant" ? "#0d0f18" : "#0f1118",
+                                    border: "1px solid rgba(255,255,255,0.06)",
+                                    borderRadius: msg.role === "assistant" ? "2px 12px 12px 12px" : "12px 2px 12px 12px",
+                                    padding: "14px 18px", maxWidth: "68%",
+                                }}>
+                                    <p style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", margin: 0, lineHeight: 1.6 }}>{msg.content}</p>
                                 </div>
                             </div>
                         ))}
 
-                        {/* Loading bubbles */}
+                        {/* Synthesizing loader */}
                         {isLoading && (
-                            <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                                <div style={{
-                                    width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-                                    background: "linear-gradient(135deg,#4f46e5,#7c3aed)",
-                                    display: "flex", alignItems: "center", justifyContent: "center",
-                                }}>
-                                    <Zap style={{ width: 17, height: 17, color: "#fff", fill: "#fff" }} />
-                                </div>
-                                <div style={{ paddingTop: 8 }}>
-                                    <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: "0 0 8px" }}>Prompt Engineer (AI)</p>
-                                    <div style={{ display: "flex", gap: 5 }}>
-                                        {[0, 1, 2].map(i => (
-                                            <div key={i} style={{
-                                                width: 7, height: 7, borderRadius: "50%", background: "#6366f1",
-                                                animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite`,
-                                            }} />
-                                        ))}
-                                    </div>
+                            <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                                <AvatarIcon />
+                                <div style={{ background: "#0d0f18", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "2px 12px 12px 12px", padding: "14px 18px" }}>
+                                    <p style={{ fontSize: 13, color: "rgba(6,182,212,0.7)", margin: 0, fontStyle: "italic", letterSpacing: "0.02em" }}>
+                                        Synthesizing architectural details…
+                                    </p>
                                 </div>
                             </div>
                         )}
@@ -296,196 +214,159 @@ export default function ImageGenerator() {
                     </div>
 
                     {/* Input bar */}
-                    <div style={{
-                        flexShrink: 0, padding: "16px 24px",
-                        borderTop: "1px solid rgba(255,255,255,0.07)",
-                        display: "flex", gap: 12, alignItems: "center",
-                        background: "#0d0d18",
-                    }}>
-                        <input
-                            value={input}
-                            onChange={e => setInput(e.target.value)}
-                            onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
-                            placeholder="Type your request..."
-                            style={{
-                                flex: 1, height: 48, padding: "0 18px", borderRadius: 24,
-                                fontSize: 14, color: "rgba(255,255,255,0.7)",
-                                background: "#1a1a2a", border: "1px solid rgba(255,255,255,0.08)",
-                                outline: "none",
-                            }}
-                        />
-                        <button
-                            onClick={handleSend}
-                            disabled={isLoading || !input.trim()}
-                            style={{
-                                height: 48, padding: "0 20px", borderRadius: 24, border: "none",
-                                cursor: "pointer", fontWeight: 700, fontSize: 14, color: "#fff",
-                                background: "linear-gradient(90deg, #06b6d4, #6366f1)",
-                                display: "flex", alignItems: "center", gap: 7,
-                                boxShadow: "0 4px 16px rgba(99,102,241,0.4)",
-                                opacity: isLoading || !input.trim() ? 0.5 : 1,
-                            }}
-                        >
-                            <Send style={{ width: 15, height: 15 }} /> Send
-                        </button>
+                    <div style={{ padding: "16px 24px 24px", flexShrink: 0 }}>
+                        <div style={{
+                            display: "flex", alignItems: "center", gap: 12,
+                            background: "#0d0f18", borderRadius: 10,
+                            border: "1px solid rgba(255,255,255,0.07)", padding: "0 6px 0 20px",
+                            boxShadow: "0 0 0 1px rgba(6,182,212,0.0)",
+                        }}>
+                            <input
+                                value={input}
+                                onChange={e => setInput(e.target.value)}
+                                onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
+                                placeholder="Refine your vision..."
+                                style={{
+                                    flex: 1, height: 52, background: "transparent", border: "none", outline: "none",
+                                    fontSize: 14, color: "rgba(255,255,255,0.6)", fontFamily: "inherit",
+                                }}
+                            />
+                            <button
+                                onClick={handleSend}
+                                disabled={isLoading || !input.trim()}
+                                style={{
+                                    width: 36, height: 36, borderRadius: 8, border: "none",
+                                    background: input.trim() ? "linear-gradient(135deg,#0891b2,#06b6d4)" : "rgba(255,255,255,0.06)",
+                                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                                    opacity: isLoading || !input.trim() ? 0.4 : 1,
+                                    boxShadow: input.trim() ? "0 0 14px rgba(6,182,212,0.4)" : "none",
+                                    transition: "all .2s",
+                                }}
+                            >
+                                <Send style={{ width: 15, height: 15, color: "#fff" }} />
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                {/* ════════════════════════════════════
-            COL 3 — OUTPUT PANEL
-        ════════════════════════════════════ */}
+                {/* ════ COL 3 — IMAGE PROMPT GENERATOR ════ */}
                 <div style={{
-                    ...col,
-                    width: 320,
-                    flexShrink: 0,
-                    background: "#0d0d18",
-                    padding: "0",
+                    width: OUTPUT_W, flexShrink: 0,
+                    background: "#05060a",
+                    display: "flex", flexDirection: "column",
+                    overflow: "hidden",
                 }}>
-                    {/* Output header */}
-                    <div style={{
-                        display: "flex", alignItems: "center", justifyContent: "space-between",
-                        padding: "18px 20px", borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0,
-                    }}>
-                        <span style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>Output Panel</span>
-                        {/* Credits */}
-                        <div style={{
-                            display: "flex", alignItems: "center", gap: 6, padding: "6px 14px",
-                            borderRadius: 999, background: "#1a1a2a", border: "1px solid rgba(255,255,255,0.08)",
-                        }}>
-                            <Zap style={{ width: 12, height: 12, color: "#22d3ee" }} />
-                            <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Credits</span>
-                            <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{credits ?? 450}</span>
-                            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>/500</span>
+                    {/* Panel header */}
+                    <div style={{ padding: "20px 20px 0", flexShrink: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                            <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#22d3ee", boxShadow: "0 0 8px rgba(34,211,238,0.8)" }} />
+                            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "rgba(255,255,255,0.5)", textTransform: "uppercase" }}>Image Prompt Generator</span>
+                        </div>
+
+                        {/* HUMAN / JSON tabs */}
+                        <div style={{ display: "flex", gap: 0, borderBottom: "1px solid rgba(255,255,255,0.07)", marginBottom: 16 }}>
+                            {(["human", "json"] as const).map(tab => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setActiveTab(tab)}
+                                    style={{
+                                        padding: "8px 16px 10px", background: "none", border: "none", cursor: "pointer",
+                                        fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase",
+                                        color: activeTab === tab ? "#22d3ee" : "rgba(255,255,255,0.3)",
+                                        borderBottom: activeTab === tab ? "2px solid #22d3ee" : "2px solid transparent",
+                                        marginBottom: -1, transition: "color .15s",
+                                    }}
+                                >{tab}</button>
+                            ))}
                         </div>
                     </div>
 
-                    <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px", display: "flex", flexDirection: "column", gap: 14 }}>
+                    {/* Content (scrollable) */}
+                    <div style={{ flex: 1, overflowY: "auto", padding: "0 18px" }}>
 
-                        {/* ── Human Prompt card ── */}
+                        {/* Text/JSON output box */}
                         <div style={{
-                            background: "#181824", borderRadius: 14,
-                            border: "1px solid rgba(255,255,255,0.08)",
-                            overflow: "hidden",
+                            borderRadius: 8, background: "#0b0c14",
+                            border: "1px solid rgba(255,255,255,0.06)",
+                            padding: "16px", marginBottom: 14, minHeight: 140,
                         }}>
-                            <div style={{
-                                display: "flex", alignItems: "center", justifyContent: "space-between",
-                                padding: "14px 16px 10px",
-                            }}>
-                                <span style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>Human Prompt</span>
-                                <button onClick={copyHuman} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
-                                    {copiedHuman
-                                        ? <Check style={{ width: 15, height: 15, color: "#4ade80" }} />
-                                        : <Copy style={{ width: 15, height: 15, color: "rgba(255,255,255,0.4)" }} />}
-                                </button>
-                            </div>
-
-                            <div style={{ padding: "0 16px 14px" }}>
-                                {result ? (
-                                    <>
-                                        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 1.65, margin: "0 0 12px" }}>
-                                            "{result.text}"
-                                        </p>
-                                        {/* Tags */}
-                                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-                                            {["Aspect: 16:9", "Style: Cyberpunk", "Platform: Midjourney"].map(tag => (
-                                                <span key={tag} style={{
-                                                    padding: "3px 10px", borderRadius: 999, fontSize: 11,
-                                                    color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.15)",
-                                                    background: "rgba(255,255,255,0.04)",
-                                                }}>{tag}</span>
-                                            ))}
-                                        </div>
-                                    </>
-                                ) : (
-                                    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.25)", lineHeight: 1.6, margin: "0 0 14px", fontStyle: "italic" }}>
-                                        Your generated prompt will appear here…
-                                    </p>
-                                )}
-
-                                <button
-                                    onClick={copyHuman}
-                                    disabled={!result}
-                                    style={{
-                                        width: "100%", height: 40, borderRadius: 10, border: "none", cursor: "pointer",
-                                        background: "#232333", fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.7)",
-                                        display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
-                                        opacity: result ? 1 : 0.4,
-                                    }}
-                                >
-                                    <Copy style={{ width: 14, height: 14 }} /> Copy to Clipboard
-                                </button>
-                            </div>
+                            {activeTab === "human" ? (
+                                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", margin: 0, lineHeight: 1.7, fontStyle: "italic" }}>
+                                    {result?.text ?? defaultText}
+                                </p>
+                            ) : (
+                                <JsonHighlight json={result?.json ?? defaultJson} />
+                            )}
                         </div>
 
-                        {/* ── JSON Prompt card ── */}
-                        <div style={{
-                            background: "#181824", borderRadius: 14,
-                            border: "1px solid rgba(255,255,255,0.08)",
-                            overflow: "hidden",
-                        }}>
-                            <div style={{
-                                display: "flex", alignItems: "center", justifyContent: "space-between",
-                                padding: "14px 16px 10px",
-                            }}>
-                                <span style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>JSON Prompt</span>
-                                <button onClick={copyJson} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
-                                    {copiedJson
-                                        ? <Check style={{ width: 15, height: 15, color: "#4ade80" }} />
-                                        : <Copy style={{ width: 15, height: 15, color: "rgba(255,255,255,0.4)" }} />}
-                                </button>
-                            </div>
-
-                            <div style={{ padding: "0 16px 14px" }}>
-                                <div style={{
-                                    background: "#0f0f1e", borderRadius: 10, padding: "12px", marginBottom: 14,
-                                    maxHeight: 260, overflowY: "auto",
+                        {/* Aspect Ratio + Platform pills */}
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+                            {[
+                                { label: "Aspect Ratio", value: "16:9" },
+                                { label: "Platform", value: "Midjourney" },
+                            ].map(pill => (
+                                <div key={pill.label} style={{
+                                    borderRadius: 8, background: "#0b0c14",
+                                    border: "1px solid rgba(255,255,255,0.06)",
+                                    padding: "12px 14px", textAlign: "center",
                                 }}>
-                                    {result ? (
-                                        <pre style={{
-                                            fontSize: 11.5, lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap",
-                                            fontFamily: "'Fira Code', 'Courier New', monospace",
-                                            color: "#22d3ee",
-                                        }}>
-                                            {result.json}
-                                        </pre>
-                                    ) : (
-                                        <pre style={{ fontSize: 12, color: "rgba(255,255,255,0.2)", margin: 0, fontFamily: "monospace" }}>
-                                            {`{
-  "prompt": "...",
-  "platform": "...",
-  "aspect": "...",
-  "style": "..."
-}`}
-                                        </pre>
-                                    )}
+                                    <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.14em", color: "rgba(255,255,255,0.25)", textTransform: "uppercase", margin: "0 0 6px" }}>{pill.label}</p>
+                                    <p style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.75)", margin: 0 }}>{pill.value}</p>
                                 </div>
-
-                                <button
-                                    onClick={copyJson}
-                                    disabled={!result}
-                                    style={{
-                                        width: "100%", height: 40, borderRadius: 10, border: "none", cursor: "pointer",
-                                        background: "#232333", fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.7)",
-                                        display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
-                                        opacity: result ? 1 : 0.4,
-                                    }}
-                                >
-                                    <Copy style={{ width: 14, height: 14 }} /> Copy to Clipboard
-                                </button>
-                            </div>
+                            ))}
                         </div>
+                    </div>
 
+                    {/* Action buttons */}
+                    <div style={{ padding: "14px 18px 20px", flexShrink: 0, borderTop: "1px solid rgba(255,255,255,0.04)", display: "flex", flexDirection: "column", gap: 10 }}>
+
+                        {/* COPY PROMPT */}
+                        <button
+                            onClick={handleCopy}
+                            style={{
+                                width: "100%", height: 42, borderRadius: 8,
+                                background: "#0f1018", border: "1px solid rgba(255,255,255,0.08)",
+                                cursor: "pointer", fontSize: 11, fontWeight: 700,
+                                color: "rgba(255,255,255,0.55)", letterSpacing: "0.12em", textTransform: "uppercase",
+                                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                                transition: "border .15s",
+                            }}
+                        >
+                            {copied ? <Check style={{ width: 13, height: 13, color: "#4ade80" }} /> : <Copy style={{ width: 13, height: 13 }} />}
+                            {copied ? "Copied!" : "Copy Prompt"}
+                        </button>
+
+                        {/* SAVE + TEST AI */}
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                            <button
+                                onClick={() => toast({ title: "Prompt saved!" })}
+                                style={{
+                                    height: 42, borderRadius: 8,
+                                    background: "#0f1018", border: "1px solid rgba(255,255,255,0.08)",
+                                    cursor: "pointer", fontSize: 11, fontWeight: 700,
+                                    color: "rgba(255,255,255,0.55)", letterSpacing: "0.12em", textTransform: "uppercase",
+                                    display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+                                }}
+                            >
+                                <Save style={{ width: 13, height: 13 }} /> Save
+                            </button>
+                            <button
+                                onClick={() => toast({ title: "Opening AI tester…" })}
+                                style={{
+                                    height: 42, borderRadius: 8,
+                                    background: "rgba(6,182,212,0.1)", border: "1px solid rgba(6,182,212,0.3)",
+                                    cursor: "pointer", fontSize: 11, fontWeight: 700,
+                                    color: "#22d3ee", letterSpacing: "0.12em", textTransform: "uppercase",
+                                    display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+                                    boxShadow: "0 0 16px rgba(6,182,212,0.1)",
+                                }}
+                            >
+                                <FlaskConical style={{ width: 13, height: 13 }} /> Test AI
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-
-            {/* Bounce animation */}
-            <style>{`
-        @keyframes bounce {
-          0%, 60%, 100% { transform: translateY(0); }
-          30% { transform: translateY(-8px); }
-        }
-      `}</style>
         </div>
     );
 }

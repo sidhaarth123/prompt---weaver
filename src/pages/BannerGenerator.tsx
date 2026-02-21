@@ -1,220 +1,421 @@
 import { useState, useRef, useEffect } from "react";
 import Navbar from "@/components/Navbar";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox";
-import { toast } from "@/hooks/use-toast";
-import { THEME, cn } from "@/lib/theme";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-    Sparkles,
-    LayoutTemplate,
-    Code2,
-    Copy,
-    Check,
-    RefreshCw,
-    Trash2,
-    Layers,
-    Monitor,
-    ShoppingBag,
-    Target,
-    Zap,
-    AlertCircle,
-    Bot
-} from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
 import { usePromptWeaverChat } from "@/hooks/usePromptWeaverChat";
-import { PremiumChatbot } from "@/components/PremiumChatbot";
-import { mapBannerResponseToState } from "@/mappers/bannerMapper";
+import { toast } from "@/hooks/use-toast";
+import {
+    LayoutTemplate, History, Layers, Copy, Download,
+    Share2, Plus, Zap, Maximize, RefreshCw
+} from "lucide-react";
 
-// --- Constants ---
-const PLACEMENTS = ["Meta Ad Feed", "Instagram Story", "Google Display Banner", "Shopify Hero", "Email Header", "Twitter/X Post", "LinkedIn Ad"];
-const SIZE_PRESETS = ["1200x628 (Feed)", "1080x1920 (Story)", "300x250 (MREC)", "728x90 (Leaderboard)", "1600x400 (Hero)"];
-const STYLES = ["Minimalist", "Bold Typography", "Luxury / Elegant", "Playful & Bright", "Clean Corporate", "High-Contrast Ad"];
-const BACKGROUND_TYPES = ["Solid Color", "Gradient", "Product Photography", "Stock Lifestyle", "Abstract Shapes", "Blurred Scene"];
+/* ─── Suggestion chips ───────────────────────────────── */
+const CHIPS = ["Shopify Hero Banner", "Instagram Story Ad", "Google Display Leaderboard", "Email Header Design"];
 
+/* ─── Default output data ────────────────────────────── */
+const DEFAULT_PROMPT = `"Architect a high-impact horizontal banner for a minimalist tech brand. Theme: 'Flow State'. Background: Subtle mesh gradient in deep navy (#0A0C1B) and cyber-teal (#14B8A6). Foreground: Sharp 3D product render of noise-canceling headphones. Typography: Swiss-style sans-serif, bold headline 'SILENCE THE WORLD'. CTA: 'Shop Now' in a ghost-button style. Size: 1200x628px."`;
+
+const DEFAULT_JSON = `{
+  "id": "ban-6601-opt",
+  "placement": "Meta Ad Feed",
+  "size": "1200x628",
+  "layers": [
+    { "type": "bg", "content": "Mesh Gradient", "colors": ["#0A0C1B", "#14B8A6"] },
+    { "type": "main", "content": "3D Product Render", "depth": 0.8 },
+    { "type": "text", "content": "Silicon Sans Bold", "kerning": -0.02 }
+  ],
+  "composition": "Golden Ratio Grid"
+}`;
+
+/* ─── JSON syntax highlighter ────────────────────────── */
+function JsonHighlight({ code }: { code: string }) {
+    return (
+        <pre style={{ margin: 0, fontFamily: "'Fira Code','Courier New',monospace", fontSize: 12, lineHeight: 1.9, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+            {code.split("\n").map((line, i) => {
+                const km = line.match(/^(\s*)"([^"]+)"(\s*:\s*)(.*)/);
+                if (km) {
+                    const [, indent, key, colon, val] = km;
+                    const isStr = val.startsWith('"');
+                    const isNum = /^[\d.[\]{}:,]+/.test(val.trim());
+                    const valCol = isStr ? "#a78bfa" : (val.trim().startsWith("[") || val.trim().startsWith("{")) ? "rgba(255,255,255,0.3)" : "#2dd4bf";
+                    return (
+                        <span key={i}>
+                            {indent}
+                            <span style={{ color: "#22d3ee" }}>"{key}"</span>
+                            <span style={{ color: "rgba(255,255,255,0.3)" }}>{colon}</span>
+                            <span style={{ color: valCol }}>{val}</span>{"\n"}
+                        </span>
+                    );
+                }
+                return <span key={i} style={{ color: "rgba(255,255,255,0.3)" }}>{line}{"\n"}</span>;
+            })}
+        </pre>
+    );
+}
+
+/* ─── Banner Agent Avatar ────────────────────────────── */
+function BannerAgentAvatar({ size = 44 }: { size?: number }) {
+    return (
+        <div style={{
+            width: size, height: size, borderRadius: 12, flexShrink: 0,
+            background: "linear-gradient(135deg,#0d9488,#14b8a6)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 0 20px rgba(20,184,166,0.35)",
+        }}>
+            <LayoutTemplate style={{ width: size * 0.45, height: size * 0.45, color: "#fff" }} />
+        </div>
+    );
+}
+
+/* ─── Animated scanning loader ───────────────────────── */
+function ScanLoader() {
+    return (
+        <div style={{ width: 40, height: 4, background: "rgba(255,255,255,0.05)", borderRadius: 2, position: "relative", overflow: "hidden" }}>
+            <div style={{
+                position: "absolute", inset: 0, width: "30%",
+                background: "#14b8a6",
+                animation: `scan-move 1.5s infinite linear`,
+            }} />
+            <style>{`@keyframes scan-move{0%{left:-30%}100%{left:130%}}`}</style>
+        </div>
+    );
+}
+
+/* ─── Main component ─────────────────────────────────── */
 export default function BannerGenerator() {
-    const [loading, setLoading] = useState(false);
+    const [input, setInput] = useState("");
+    const [copied, setCopied] = useState(false);
     const [result, setResult] = useState<{ text: string; json: string } | null>(null);
-    const [touchedByUser, setTouchedByUser] = useState<Record<string, boolean>>({});
+    const chatEndRef = useRef<HTMLDivElement>(null);
 
-    // Form State
-    const [brandName, setBrandName] = useState("");
-    const [productName, setProductName] = useState("");
-    const [primaryMessage, setPrimaryMessage] = useState("");
-    const [cta, setCta] = useState("");
-    const [placement, setPlacement] = useState("");
-    const [sizePreset, setSizePreset] = useState("");
-    const [style, setStyle] = useState("");
-    const [backgroundType, setBackgroundType] = useState("");
+    const { chatHistory, isLoading, sendMessage } =
+        usePromptWeaverChat({
+            workflowType: "banner",
+            onDataReceived: (res) => {
+                if (res.prompt_package) {
+                    setResult({
+                        text: res.prompt_package.prompt,
+                        json: JSON.stringify({
+                            id: `ban-${Math.floor(1000 + Math.random() * 8999)}-opt`,
+                            placement: res.final?.placement ?? "Meta Ad Feed",
+                            size: res.final?.size_preset ?? "1200x628",
+                            layers: [
+                                { type: "bg", content: res.final?.background_type ?? "Gradient" },
+                                { type: "style", content: res.final?.style ?? "Minimalist" }
+                            ],
+                            composition: "Dynamic Grid"
+                        }, null, 2),
+                    });
+                }
+            },
+        });
 
-    const setFieldManually = (field: string, value: any, setter: (val: any) => void) => {
-        setter(value);
-        setTouchedByUser(prev => ({ ...prev, [field]: true }));
+    useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory, isLoading]);
+
+    const handleSend = (msg?: string) => {
+        const text = msg ?? input.trim();
+        if (!text || isLoading) return;
+        sendMessage(text);
+        setInput("");
     };
 
-    const setFieldAuto = (field: string, value: any) => {
-        if (touchedByUser[field]) return;
-        const setters: Record<string, (val: any) => void> = {
-            brandName: setBrandName,
-            productName: setProductName,
-            primaryMessage: setPrimaryMessage,
-            cta: setCta,
-            placement: setPlacement,
-            sizePreset: setSizePreset,
-            style: setStyle,
-            backgroundType: setBackgroundType
-        };
-        const setter = setters[field];
-        if (setter) setter(value);
+    const handleCopy = async () => {
+        await navigator.clipboard.writeText(result?.text ?? DEFAULT_PROMPT);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        toast({ title: "Banner prompt copied!" });
     };
 
-    const {
-        chatHistory,
-        isLoading: assistantLoading,
-        credits,
-        errorStatus,
-        sendMessage,
-        clearChat
-    } = usePromptWeaverChat({
-        workflowType: 'banner',
-        onDataReceived: (res) => {
-            if (res.final) {
-                mapBannerResponseToState(res.final, {}, setFieldAuto);
-            }
-            if (res.prompt_package) {
-                setResult({
-                    text: res.prompt_package.prompt || "Banner generated successfully.",
-                    json: JSON.stringify(res.final, null, 2)
-                });
-            }
-        }
-    });
-
-    const handleGenerate = async () => {
-        if (!brandName || !primaryMessage || !placement) {
-            toast({ title: "Missing fields", description: "Fill in Brand, Message, and Placement.", variant: "destructive" });
-            return;
-        }
-        setLoading(true);
-        try {
-            const finalPrompt = `Banner Design for ${brandName}: ${productName}\nPlacement: ${placement} (${sizePreset})\nStyle: ${style}\nHeadline: ${primaryMessage}\nCTA: ${cta}`;
-            setResult({
-                text: finalPrompt,
-                json: JSON.stringify({ brandName, productName, primaryMessage, cta, placement, sizePreset, style }, null, 2)
-            });
-            toast({ title: "Banner prompt generated!" });
-        } finally {
-            setLoading(false);
-        }
-    };
+    const promptText = result?.text ?? DEFAULT_PROMPT;
+    const jsonText = result?.json ?? DEFAULT_JSON;
 
     return (
-        <div className="min-h-screen bg-background font-sans">
+        <div style={{
+            height: "100vh", background: "#05070a",
+            display: "flex", flexDirection: "column",
+            overflow: "hidden",
+            fontFamily: "'Inter','SF Pro',system-ui,sans-serif",
+        }}>
             <Navbar />
-            <div className="fixed inset-0 pointer-events-none z-0">
-                <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-emerald-500/5 blur-[120px] rounded-full" />
-                <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full" />
-            </div>
 
-            <main className="container relative z-10 mx-auto px-4 pt-24 pb-20">
-                <div className="grid lg:grid-cols-[1fr,480px] gap-8 items-start">
-                    <div className="space-y-6">
-                        <div className="mb-2">
-                            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 mb-4 backdrop-blur-md">
-                                <Sparkles className="w-3.5 h-3.5 text-primary" />
-                                <span className="text-xs font-semibold uppercase tracking-wider text-primary">Banner Engine v1.0</span>
-                            </div>
-                            <h1 className="text-5xl font-bold tracking-tight mb-4 text-white">Banner Prompt Generator</h1>
-                            <p className="text-muted-foreground text-lg max-w-2xl leading-relaxed">Design professional ad banners and shop headers with AI.</p>
+            {/* ── Two-column body ── */}
+            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 420px", overflow: "hidden" }}>
+
+                {/* ════ LEFT PANEL — BANNER ARCHITECT ════ */}
+                <div style={{
+                    display: "flex", flexDirection: "column",
+                    background: "#05070a",
+                    borderRight: "1px solid rgba(255,255,255,0.05)",
+                    overflow: "hidden",
+                }}>
+                    {/* Header */}
+                    <div style={{ padding: "34px 48px 0", flexShrink: 0 }}>
+                        {/* CANVAS V3.2 • LAYOUT OPTIMIZED */}
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "4px 14px", borderRadius: 999, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.22)", marginBottom: 18 }}>
+                            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.16em", color: "#2dd4bf", textTransform: "uppercase" }}>Canvas V3.2</span>
+                            <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#14b8a6" }} />
+                            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.16em", color: "rgba(255,255,255,0.45)", textTransform: "uppercase" }}>Layout Optimized</span>
                         </div>
 
-                        <section className={cn(THEME.glassCard, "p-6 space-y-6")}>
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
-                                    <ShoppingBag className="w-5 h-5" />
-                                </div>
-                                <h3 className="font-semibold text-lg">Banner Brief</h3>
-                            </div>
-                            <div className="grid sm:grid-cols-2 gap-5">
-                                <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Brand Name</Label>
-                                    <Input placeholder="e.g. Aura" value={brandName} onChange={e => setFieldManually('brandName', e.target.value, setBrandName)} className="bg-background/40 border-white/10" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Product</Label>
-                                    <Input placeholder="e.g. Silk Mask" value={productName} onChange={e => setFieldManually('productName', e.target.value, setProductName)} className="bg-background/40 border-white/10" />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Headline Message</Label>
-                                <Input placeholder="Main hook for the banner..." value={primaryMessage} onChange={e => setFieldManually('primaryMessage', e.target.value, setPrimaryMessage)} className="bg-background/40 border-white/10" />
-                            </div>
-                        </section>
+                        <h1 style={{ fontSize: 48, fontWeight: 900, color: "#fff", margin: "0 0 14px", letterSpacing: "-1.5px", lineHeight: 1.05 }}>
+                            Banner Architect
+                        </h1>
+                        <p style={{ fontSize: 14.5, color: "rgba(255,255,255,0.4)", margin: "0 0 28px", maxWidth: 440, lineHeight: 1.65 }}>
+                            Precision-engineering display banners, social headers, and landing page hero sections with neural composition.
+                        </p>
 
-                        <section className={cn(THEME.glassCard, "p-6 space-y-6")}>
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
-                                    <Layers className="w-5 h-5" />
-                                </div>
-                                <h3 className="font-semibold text-lg">Format & Style</h3>
-                            </div>
-                            <div className="grid sm:grid-cols-2 gap-5">
-                                <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Placement</Label>
-                                    <Select value={placement} onValueChange={v => setFieldManually('placement', v, setPlacement)}>
-                                        <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
-                                        <SelectContent>{PLACEMENTS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Style</Label>
-                                    <Select value={style} onValueChange={v => setFieldManually('style', v, setStyle)}>
-                                        <SelectTrigger className="bg-background/40 border-white/10"><SelectValue placeholder="Select..." /></SelectTrigger>
-                                        <SelectContent>{STYLES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                        </section>
-
-                        <Button onClick={handleGenerate} disabled={loading} className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold">
-                            {loading ? <RefreshCw className="mr-2 animate-spin" /> : <Sparkles className="mr-2" />}
-                            Generate Final Concepts
-                        </Button>
+                        {/* History + Presets buttons */}
+                        <div style={{ display: "flex", gap: 12, marginBottom: 34 }}>
+                            {[
+                                { icon: <History style={{ width: 14, height: 14 }} />, label: "Banner History" },
+                                { icon: <Maximize style={{ width: 14, height: 14 }} />, label: "Canvas Presets" },
+                            ].map(btn => (
+                                <button key={btn.label} style={{
+                                    display: "flex", alignItems: "center", gap: 8,
+                                    padding: "10px 22px", borderRadius: 10,
+                                    background: "#0d0f17", border: "1px solid rgba(255,255,255,0.08)",
+                                    cursor: "pointer", fontSize: 12.5, fontWeight: 600,
+                                    color: "rgba(255,255,255,0.5)", letterSpacing: "0.04em",
+                                }}>
+                                    {btn.icon} {btn.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
-                    <div className="lg:h-[calc(100vh-120px)] lg:sticky lg:top-24">
-                        <PremiumChatbot
-                            chatHistory={chatHistory}
-                            isLoading={assistantLoading}
-                            credits={credits}
-                            errorStatus={errorStatus}
-                            onSendMessage={sendMessage}
-                            result={result}
-                            suggestions={[
-                                "Bold typography for Meta Ad",
-                                "Minimalist hero for Shopify",
-                                "Cyberpunk event banner",
-                                "Luxury email promotional header"
-                            ]}
-                        />
-                        <div className="mt-4 px-2">
-                            <Button variant="ghost" size="sm" onClick={() => setTouchedByUser({})} className="text-[10px] uppercase tracking-widest text-muted-foreground/40 hover:text-primary transition-colors h-6">
-                                <RefreshCw className="w-3 h-3 mr-1.5" /> Reset Flags
-                            </Button>
+                    {/* ── Chat Messages ── */}
+                    <div style={{ flex: 1, overflowY: "auto", padding: "0 48px" }}>
+
+                        {/* Welcome Agent */}
+                        <div style={{ display: "flex", gap: 16, alignItems: "flex-start", marginBottom: 24 }}>
+                            <BannerAgentAvatar size={44} />
+                            <div style={{
+                                flex: 1, borderRadius: "2px 16px 16px 16px",
+                                background: "rgba(20,184,166,0.06)",
+                                border: "1px solid rgba(20,184,166,0.18)",
+                                padding: "18px 22px",
+                            }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#14b8a6" }} />
+                                    <span style={{ fontSize: 13, fontWeight: 800, color: "#fff", letterSpacing: "0.02em" }}>Layout Agent Initialized</span>
+                                </div>
+                                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", margin: 0, lineHeight: 1.7 }}>
+                                    I'm ready to architect your next digital banner. Describe the placement, style, and messaging. I'll provide a composited prompt and a technical layer-schema.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Chips */}
+                        {chatHistory.length === 0 && (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 28 }}>
+                                {CHIPS.map(chip => (
+                                    <button
+                                        key={chip}
+                                        onClick={() => handleSend(chip)}
+                                        style={{
+                                            padding: "8px 18px", borderRadius: 999,
+                                            background: "#0d0f17", border: "1px solid rgba(255,255,255,0.1)",
+                                            cursor: "pointer", fontSize: 12.5, fontWeight: 500,
+                                            color: "rgba(255,255,255,0.45)", transition: "all .15s",
+                                        }}
+                                    >{chip}</button>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Chat History */}
+                        {chatHistory.map((msg, i) => (
+                            <div key={i} style={{ marginBottom: 22 }}>
+                                {msg.role === "user" ? (
+                                    <div style={{ display: "flex", gap: 14, alignItems: "flex-start", justifyContent: "flex-end" }}>
+                                        <div style={{
+                                            flex: 1, maxWidth: "70%", borderRadius: "16px 16px 2px 16px",
+                                            background: "#0d0f17", border: "1px solid rgba(255,255,255,0.06)",
+                                            padding: "15px 20px",
+                                        }}>
+                                            <p style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", margin: 0, lineHeight: 1.65 }}>{msg.content}</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+                                        <BannerAgentAvatar size={36} />
+                                        <div style={{ flex: 1, borderRadius: "2px 16px 16px 16px", background: "rgba(20,184,166,0.06)", border: "1px solid rgba(20,184,166,0.14)", padding: "16px 20px" }}>
+                                            <p style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", margin: 0, lineHeight: 1.7 }}>{msg.content}</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+
+                        {/* Loader */}
+                        {isLoading && (
+                            <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+                                <BannerAgentAvatar size={36} />
+                                <div style={{
+                                    borderRadius: "4px 16px 16px 16px",
+                                    background: "#0d0f17", border: "1px solid rgba(255,255,255,0.06)",
+                                    padding: "14px 20px", display: "flex", alignItems: "center", gap: 14,
+                                }}>
+                                    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", margin: 0, fontStyle: "italic" }}>
+                                        Architect is scanning composition benchmarks...
+                                    </p>
+                                    <ScanLoader />
+                                </div>
+                            </div>
+                        )}
+                        <div ref={chatEndRef} />
+                    </div>
+
+                    {/* Input */}
+                    <div style={{ padding: "16px 48px 24px", flexShrink: 0 }}>
+                        <div style={{
+                            display: "flex", alignItems: "center", gap: 12,
+                            background: "#0d0e18", borderRadius: 14,
+                            border: "1px solid rgba(255,255,255,0.08)", padding: "0 10px 0 20px",
+                        }}>
+                            <input
+                                value={input}
+                                onChange={e => setInput(e.target.value)}
+                                onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
+                                placeholder="Evolve your banner's layout strategy..."
+                                style={{
+                                    flex: 1, height: 56, background: "transparent", border: "none", outline: "none",
+                                    fontSize: 14.5, color: "rgba(255,255,255,0.5)", fontFamily: "inherit",
+                                }}
+                            />
+                            <button
+                                onClick={() => handleSend()}
+                                disabled={isLoading || !input.trim()}
+                                style={{
+                                    display: "flex", alignItems: "center", gap: 8,
+                                    padding: "11px 22px", borderRadius: 10, border: "none",
+                                    background: "linear-gradient(135deg,#0d9488,#14b8a6)",
+                                    cursor: "pointer", fontSize: 13, fontWeight: 800,
+                                    color: "#fff", letterSpacing: "0.14em", textTransform: "uppercase",
+                                    opacity: isLoading || !input.trim() ? 0.4 : 1,
+                                    boxShadow: "0 4px 20px rgba(20,184,166,0.3)",
+                                    transition: "opacity .2s",
+                                }}
+                            >
+                                Synthesize <Plus style={{ width: 14, height: 14 }} />
+                            </button>
+                        </div>
+
+                        {/* Shortcuts */}
+                        <div style={{ display: "flex", gap: 20, paddingTop: 12, paddingLeft: 6 }}>
+                            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.15)", letterSpacing: "0.1em" }}>⌘ + ENTER TO SEND</span>
+                            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: "#2dd4bf", letterSpacing: "0.14em", fontWeight: 600 }}>
+                                <Layers style={{ width: 10, height: 10 }} /> MULTI-LAYER COMPOSITION ACTIVE
+                            </span>
                         </div>
                     </div>
                 </div>
-            </main>
+
+                {/* ════ RIGHT PANEL — OUTPUT ════ */}
+                <div style={{
+                    display: "flex", flexDirection: "column",
+                    background: "#05070a", overflow: "hidden",
+                }}>
+                    {/* Header */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "26px 28px 20px", flexShrink: 0, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#14b8a6", boxShadow: "0 0 8px rgba(20,184,166,0.8)" }} />
+                            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", color: "rgba(255,255,255,0.4)", textTransform: "uppercase" }}>Output Synthesis</span>
+                        </div>
+                        <div style={{ padding: "4px 12px", borderRadius: 999, background: "#0d0f17", border: "1px solid rgba(255,255,255,0.1)", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.4)", textTransform: "uppercase" }}>
+                            Ready
+                        </div>
+                    </div>
+
+                    <div style={{ flex: 1, overflowY: "auto", padding: "24px 28px" }}>
+
+                        {/* BANNER PROMPT */}
+                        <div style={{ marginBottom: 28 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "rgba(255,255,255,0.3)", textTransform: "uppercase" }}>Refined Banner Prompt</span>
+                                <button onClick={handleCopy} style={{ display: "flex", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer", fontSize: 10, fontWeight: 700, color: "#2dd4bf", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                                    <Copy style={{ width: 11, height: 11 }} /> {copied ? "Copied!" : "Copy"}
+                                </button>
+                            </div>
+                            <div style={{ borderRadius: 12, background: "#0c0e16", border: "1px solid rgba(255,255,255,0.06)", padding: "18px" }}>
+                                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", margin: 0, lineHeight: 1.75, fontStyle: "italic" }}>
+                                    {promptText}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* TECHNICAL SCHEMA */}
+                        <div style={{ marginBottom: 28 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "rgba(255,255,255,0.3)", textTransform: "uppercase" }}>Technical Schema (JSON)</span>
+                                <button
+                                    onClick={() => { navigator.clipboard.writeText(jsonText); toast({ title: "JSON Exported!" }); }}
+                                    style={{ display: "flex", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer", fontSize: 10, fontWeight: 700, color: "#2dd4bf", letterSpacing: "0.12em", textTransform: "uppercase" }}
+                                >
+                                    <Download style={{ width: 11, height: 11 }} /> Export
+                                </button>
+                            </div>
+                            <div style={{ borderRadius: 12, background: "#0c0e16", border: "1px solid rgba(255,255,255,0.06)", padding: "16px 18px" }}>
+                                <JsonHighlight code={jsonText} />
+                            </div>
+                        </div>
+
+                        {/* DESIGN READY card */}
+                        <div style={{
+                            borderRadius: 16,
+                            background: "linear-gradient(135deg,#062b27,#083a34,#041c19)",
+                            border: "1px solid rgba(20,184,166,0.25)",
+                            padding: "24px",
+                            boxShadow: "0 8px 32px rgba(20,184,166,0.15)",
+                        }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
+                                <div style={{
+                                    width: 50, height: 50, borderRadius: 14,
+                                    background: "linear-gradient(135deg,#0d9488,#14b8a6)",
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                    boxShadow: "0 0 20px rgba(20,184,166,0.4)",
+                                }}>
+                                    <Layers style={{ width: 22, height: 22, color: "#fff" }} />
+                                </div>
+                                <div>
+                                    <p style={{ fontSize: 16, fontWeight: 800, color: "#fff", margin: "0 0 3px", letterSpacing: "0.02em" }}>Design Ready</p>
+                                    <p style={{ fontSize: 10, fontWeight: 700, color: "#2dd4bf", letterSpacing: "0.14em", textTransform: "uppercase", margin: 0 }}>Verified Composited Assets</p>
+                                </div>
+                            </div>
+
+                            {/* ACTION: SEND TO SIGMA or CANVA (Simulated) */}
+                            <button style={{
+                                width: "100%", height: 50, borderRadius: 12, border: "none",
+                                background: "#fff", cursor: "pointer",
+                                fontSize: 13, fontWeight: 800, color: "#18181b",
+                                letterSpacing: "0.1em", textTransform: "uppercase",
+                                display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                                marginBottom: 12,
+                            }}>
+                                <Zap style={{ width: 15, height: 15, fill: "#000" }} />
+                                Direct-to-Canvas Sync
+                            </button>
+
+                            {/* ASSETS + SHARE */}
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                                {[
+                                    { label: "Assets", icon: <Download style={{ width: 13, height: 13 }} /> },
+                                    { label: "Share", icon: <Share2 style={{ width: 13, height: 13 }} /> },
+                                ].map(btn => (
+                                    <button key={btn.label} style={{
+                                        height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.12)",
+                                        background: "rgba(255,255,255,0.05)", cursor: "pointer",
+                                        fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.5)",
+                                        letterSpacing: "0.14em", textTransform: "uppercase",
+                                        display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+                                    }}>
+                                        {btn.icon} {btn.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }
