@@ -142,22 +142,21 @@ export default function WebsiteGenerator() {
 
     return (
         <div style={{
-            height: "100vh", background: "#080a10",
+            minHeight: "100vh", background: "#080a10",
             display: "flex", flexDirection: "column",
-            overflow: "hidden", paddingTop: 80,
+            paddingTop: 80,
             fontFamily: "'Inter','SF Pro',system-ui,sans-serif",
         }}>
             <Navbar />
 
             {/* ── Two-column body ── */}
-            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 400px", overflow: "hidden" }}>
+            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 400px" }}>
 
                 {/* ════ LEFT PANEL ════ */}
                 <div style={{
                     display: "flex", flexDirection: "column",
                     background: "#080a10",
                     borderRight: "1px solid rgba(255,255,255,0.05)",
-                    overflow: "hidden",
                 }}>
                     {/* ── Hero header ── */}
                     <div style={{ padding: "32px 44px 0", flexShrink: 0 }}>
@@ -328,7 +327,7 @@ export default function WebsiteGenerator() {
                 {/* ════ RIGHT PANEL — OUTPUT SYNTHESIS ════ */}
                 <div style={{
                     display: "flex", flexDirection: "column",
-                    background: "#070810", overflow: "hidden",
+                    background: "#070810",
                 }}>
                     {/* Panel header */}
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "24px 26px 18px", flexShrink: 0, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>

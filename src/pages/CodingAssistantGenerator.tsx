@@ -131,22 +131,21 @@ export default function CodingAssistantGenerator() {
 
     return (
         <div style={{
-            height: "100vh", background: "#06070a",
+            minHeight: "100vh", background: "#06070a",
             display: "flex", flexDirection: "column",
-            overflow: "hidden", paddingTop: 80,
+            paddingTop: 80,
             fontFamily: "'Inter','SF Pro',system-ui,sans-serif",
         }}>
             <Navbar />
 
             {/* ── Two-column body ── */}
-            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 420px", overflow: "hidden" }}>
+            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 420px" }}>
 
                 {/* ════ LEFT PANEL — CODING ARCHITECT ════ */}
                 <div style={{
                     display: "flex", flexDirection: "column",
                     background: "#06070a",
                     borderRight: "1px solid rgba(255,255,255,0.05)",
-                    overflow: "hidden",
                 }}>
                     {/* Header */}
                     <div style={{ padding: "34px 48px 0", flexShrink: 0 }}>
@@ -314,7 +313,7 @@ export default function CodingAssistantGenerator() {
                 {/* ════ RIGHT PANEL — OUTPUT ════ */}
                 <div style={{
                     display: "flex", flexDirection: "column",
-                    background: "#06070a", overflow: "hidden",
+                    background: "#06070a",
                 }}>
                     {/* Header */}
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "26px 28px 20px", flexShrink: 0, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>

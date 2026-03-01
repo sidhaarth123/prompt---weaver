@@ -88,7 +88,7 @@ export default function DashboardAbout() {
                 </div>
 
                 {/* Sticky Tabs */}
-                <div className="sticky top-[73px] z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border/50 mb-12 -mx-4 px-4 lg:-mx-6 lg:px-6 py-2 overflow-x-auto">
+                <div className="sticky top-[80px] z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border/50 mb-12 -mx-4 px-4 lg:-mx-6 lg:px-6 py-2 overflow-x-auto">
                     <div className="flex items-center gap-1 min-w-max">
                         {TABS.map((tab) => (
                             <button

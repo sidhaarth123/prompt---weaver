@@ -146,7 +146,7 @@ export default function PricingView() {
             <Navbar />
 
             {/* ── Page content ── */}
-            <div style={{ flex: 1, position: "relative", zIndex: 1, padding: "48px 32px 60px", maxWidth: 1100, margin: "0 auto", width: "100%" }}>
+            <div style={{ flex: 1, position: "relative", zIndex: 1, padding: "100px 32px 60px", maxWidth: 1100, margin: "0 auto", width: "100%" }}>
 
                 {/* Heading */}
                 <div style={{ textAlign: "center", marginBottom: 48 }}>

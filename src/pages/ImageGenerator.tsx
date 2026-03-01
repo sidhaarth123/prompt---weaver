@@ -108,11 +108,11 @@ export default function ImageGenerator() {
     const OUTPUT_W = 300;
 
     return (
-        <div style={{ height: "100vh", background: "#07080d", display: "flex", flexDirection: "column", overflow: "hidden", paddingTop: 80, fontFamily: "'Inter','SF Pro',system-ui,sans-serif" }}>
+        <div style={{ minHeight: "100vh", background: "#07080d", display: "flex", flexDirection: "column", paddingTop: 80, fontFamily: "'Inter','SF Pro',system-ui,sans-serif" }}>
             <Navbar />
 
             {/* 3-column body */}
-            <div style={{ display: "flex", flex: 1, overflow: "hidden", marginTop: 0 }}>
+            <div style={{ display: "flex", flex: 1, marginTop: 0 }}>
 
                 {/* ════ COL 1 — STUDIO HISTORY ════ */}
                 <aside style={{
@@ -121,7 +121,6 @@ export default function ImageGenerator() {
                     borderRight: "1px solid rgba(255,255,255,0.04)",
                     display: "flex", flexDirection: "column",
                     padding: "20px 14px 14px",
-                    overflow: "hidden",
                 }}>
                     <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "rgba(255,255,255,0.3)", textTransform: "uppercase", margin: "0 0 16px 2px" }}>
                         Studio History
@@ -160,7 +159,7 @@ export default function ImageGenerator() {
                 </aside>
 
                 {/* ════ COL 2 — CHAT WORKSPACE ════ */}
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "#07080d", borderRight: "1px solid rgba(255,255,255,0.04)", overflow: "hidden" }}>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "#07080d", borderRight: "1px solid rgba(255,255,255,0.04)" }}>
 
                     {/* Messages */}
                     <div style={{ flex: 1, overflowY: "auto", padding: "28px 32px 16px", display: "flex", flexDirection: "column", gap: 20 }}>
@@ -254,7 +253,6 @@ export default function ImageGenerator() {
                     width: OUTPUT_W, flexShrink: 0,
                     background: "#05060a",
                     display: "flex", flexDirection: "column",
-                    overflow: "hidden",
                 }}>
                     {/* Panel header */}
                     <div style={{ padding: "20px 20px 0", flexShrink: 0 }}>

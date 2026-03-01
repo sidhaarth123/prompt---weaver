@@ -78,7 +78,7 @@ export default function PaymentSuccess() {
             {/* Center content */}
             <div style={{
                 flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
-                justifyContent: "center", padding: "40px 24px 60px",
+                justifyContent: "center", padding: "120px 24px 60px",
                 position: "relative", zIndex: 1,
                 opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(16px)",
                 transition: "opacity .5s ease, transform .5s ease",

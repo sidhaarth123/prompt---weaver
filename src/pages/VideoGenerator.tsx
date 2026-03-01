@@ -142,22 +142,21 @@ export default function VideoGenerator() {
 
     return (
         <div style={{
-            height: "100vh", background: "#080a10",
+            minHeight: "100vh", background: "#080a10",
             display: "flex", flexDirection: "column",
-            overflow: "hidden", paddingTop: 80,
+            paddingTop: 80,
             fontFamily: "'Inter','SF Pro',system-ui,sans-serif",
         }}>
             <Navbar />
 
             {/* ── Two-column body ── */}
-            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 420px", overflow: "hidden" }}>
+            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 420px" }}>
 
                 {/* ════ LEFT PANEL ════ */}
                 <div style={{
                     display: "flex", flexDirection: "column",
                     background: "#080a10",
                     borderRight: "1px solid rgba(255,255,255,0.05)",
-                    overflow: "hidden",
                 }}>
                     {/* ── Hero header ── */}
                     <div style={{ padding: "36px 48px 0", flexShrink: 0 }}>
@@ -333,7 +332,7 @@ export default function VideoGenerator() {
                 {/* ════ RIGHT PANEL — OUTPUT SYNTHESIS ════ */}
                 <div style={{
                     display: "flex", flexDirection: "column",
-                    background: "#070810", overflow: "hidden",
+                    background: "#070810",
                 }}>
                     {/* Panel header */}
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "28px 28px 20px", flexShrink: 0, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>

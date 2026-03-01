@@ -51,6 +51,17 @@ export default function Navbar() {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [mobileOpen]);
+
   // Plan + credits from new schema
   const [plan, setPlan] = useState<string>("free");
   const [creditsBalance, setCreditsBalance] = useState<number>(0);
